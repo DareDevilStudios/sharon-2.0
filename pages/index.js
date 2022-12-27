@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { Inter } from '@next/font/google'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import Homeimg from '../components/Homeimg'
+import Aboutus from '../components/Aboutus'
 import { Card_keeper } from '../components/Card_keeper'
 import { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
@@ -93,9 +95,7 @@ export default function Home() {
 
           {/* Right */}
 
-          <div className="hidden w-100 md:w-1/2 m-auto justify-center items-center md:block ">
-            <Image src="/../public/home.png" alt="Picture of the author" width={500} height={500} />
-          </div>
+          <Homeimg/>
         </div>
 
         {/* ABOUT SECTION */}
@@ -103,9 +103,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row p-8 w-screen bg-sharon-grey">
 
           {/* left */}
-          <div id="about" className="flex w-100 md:w-1/2 m-auto justify-center items-center ">
-            <Image className='rounded-lg' src="/../public/about_us_image.jpg" alt="Picture of the author" width={500} height={500} />
-          </div>
+          <Aboutus/>
 
           {/* Right */}
           <div className="flex flex-col w-100 h-100 md:w-1/2 justify-center items-center">
