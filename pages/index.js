@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Inter } from '@next/font/google'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 import { Card_keeper } from '../components/Card_keeper'
 import { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
@@ -123,7 +124,7 @@ export default function Home() {
 
         {/* PRODUCTS SECTION */}
 
-        <div className="h-full w-screen bg-black p-8 ">
+        <div className="w-screen bg-black p-8 ">
 
           <h1 className="text-4xl font-bold my-8 text-center">
             Our Products
@@ -132,6 +133,13 @@ export default function Home() {
           <Card_keeper imageUrls={imageUrls} />
 
         </div>
+
+        {/* Footer */}
+
+        <div className="">
+          <Footer />
+        </div>
+
       </main>
     </>
   )
