@@ -87,7 +87,7 @@ export default function Home() {
               Strong foundations, solid designs: <br />
               Trust us to bring your concrete visions to life.
             </span>
-            <Link href="#about" class="mt-6 px-8 py-2 border-2 border-sharon-or w-max hover:bg-sharon-or rounded-lg flex">
+            <Link href="#about" class=" hover:bg-black  mt-6 px-8 py-2 border-2 text-white font-bold bg-sharon-or border-sharon-or w-max rounded-lg flex">
               <svg class="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
               Know More
             </Link>
