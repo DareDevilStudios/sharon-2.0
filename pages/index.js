@@ -108,12 +108,12 @@ export default function Home() {
           {/* Right */}
           <div className="flex flex-col w-100 h-100 md:w-1/2 justify-center items-center">
             <h1 className="text-3xl leading-tight text-white font-semibold mt-3 underline">ABOUT US</h1>
-            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+            <span className='text-sharon-greyy text-justify mt-4 flex flex-wrap w-4/5 text-lg md:text-xl'>
               Welcome to our Sharon Industries! We are a team of professionals dedicated to providing top-quality products for the construction industry. Our product line includes a wide range of designs, including pillars, water cuttings, wall designs, ventilations, parapet designs, and fencing.
             </span>
-            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+            <span className='text-sharon-greyy text-justify mt-4 flex flex-wrap w-4/5 text-lg md:text-xl'>
               Our products are made with the highest quality materials and techniques, ensuring that they are both beautiful and functional. We are committed to delivering exceptional customer service and stand behind our products with a satisfaction guarantee.            </span>
-            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+            <span className='text-sharon-greyy text-justify mt-4 flex flex-wrap w-4/5 text-lg md:text-xl'>
               Whether you're a contractor looking to add value to your projects or a homeowner looking to make a statement with your property, we have the products and expertise to help you achieve your goals. Thank you for considering our company for your concrete design needs. We look forward to working with you and helping bring your vision to life.
             </span>
           </div>
