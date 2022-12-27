@@ -1,11 +1,63 @@
 import Head from 'next/head'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Inter } from '@next/font/google'
-import styles from '../styles/Home.module.css'
+import Navbar from '../components/Navbar'
+import { Card_keeper } from '../components/Card_keeper'
+import { useState, useEffect, useRef } from "react";
+import { db } from "../firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import { v4 } from "uuid";
+import { useSelector, useDispatch } from 'react-redux'
+import { addUrl, increment } from '../slice/counterSlice'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+
+  const dispatch = useDispatch()
+  const imageUrls = useSelector((state) => state.home.home_url)
+  const url = useSelector((state) => state.home.url)
+  const shouldlog = useRef(true);
+  const productsRef = collection(db, "products");
+
+
+
+  // const imagesListRef = ref(storage, "home");
+  // listAll(imagesListRef).then((response) => {
+  //   response.items.forEach((item) => {
+  //     getDownloadURL(item).then((url) => {
+  //       console.log(url);
+  //       setImageUrls((prev) => [...prev, url]);
+  //     });
+  //   });
+  // });
+
+
+  useEffect(() => {
+    if (shouldlog.current) {
+      shouldlog.current = false;
+      console.log(url);
+      const getUsers = async () => {
+        const urls = await getDocs(productsRef);
+        urls.forEach((doc) => {
+          dispatch(addUrl(doc.data()))
+        })
+      };
+
+      getUsers();
+
+    }
+  }, []);
+
+
   return (
     <>
       <Head>
@@ -14,108 +66,71 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>pages/index.js</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
+      <main className="bg-black h-screen">
+        <Navbar />
+
+        {/* HERO SECTION */}
+
+        <div className="flex flex-col md:flex-row pb-9 w-screen">
+
+          {/* left */}
+
+          <div className="flex flex-col w-100 md:w-1/2 justify-center items-center mt-20">
+            <h1 className=" mt-14 md:mt-0  md:text-8xl text-4xl leading-tight text-sharon-or font-black text-center">DESIGN <br />
+              YOUR <br /> DREAM <br />
+              HOME
+            </h1>
+            <span className='text-sharon-greyy mt-4 text-center w-3/4 text-base md:text-lg'>
+              Strong foundations, solid designs: <br />
+              Trust us to bring your concrete visions to life.
+            </span>
+            <Link href="#about" class="mt-6 px-8 py-2 border-2 border-sharon-or w-max hover:bg-sharon-or rounded-lg flex">
+              <svg class="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+              Know More
+            </Link>
+          </div>
+
+          {/* Right */}
+
+          <div className="hidden w-100 md:w-1/2 m-auto justify-center items-center md:block ">
+            <Image src="/../public/home.png" alt="Picture of the author" width={500} height={500} />
           </div>
         </div>
 
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
-            />
+        {/* ABOUT SECTION */}
+
+        <div className="flex flex-col md:flex-row p-8 w-screen bg-sharon-grey">
+
+          {/* left */}
+          <div id="about" className="flex w-100 md:w-1/2 m-auto justify-center items-center ">
+            <Image className='rounded-lg' src="/../public/about_us_image.jpg" alt="Picture of the author" width={500} height={500} />
           </div>
+
+          {/* Right */}
+          <div className="flex flex-col w-100 h-100 md:w-1/2 justify-center items-center">
+            <h1 className="text-3xl leading-tight text-white font-semibold mt-3 underline">ABOUT US</h1>
+            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+              Welcome to our Sharon Industries! We are a team of professionals dedicated to providing top-quality products for the construction industry. Our product line includes a wide range of designs, including pillars, water cuttings, wall designs, ventilations, parapet designs, and fencing.
+            </span>
+            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+              Our products are made with the highest quality materials and techniques, ensuring that they are both beautiful and functional. We are committed to delivering exceptional customer service and stand behind our products with a satisfaction guarantee.            </span>
+            <span className='text-sharon-greyy text-center mt-4 flex flex-wrap w-4/5 text-sm md:text-lg'>
+              Whether you're a contractor looking to add value to your projects or a homeowner looking to make a statement with your property, we have the products and expertise to help you achieve your goals. Thank you for considering our company for your concrete design needs. We look forward to working with you and helping bring your vision to life.
+            </span>
+          </div>
+
         </div>
 
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
+        {/* PRODUCTS SECTION */}
 
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
+        <div className="h-full w-screen bg-black p-8 ">
 
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
+          <h1 className="text-4xl font-bold my-8 text-center">
+            Our Products
+          </h1>
 
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
+          <Card_keeper imageUrls={imageUrls} />
+
         </div>
       </main>
     </>

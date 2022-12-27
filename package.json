@@ -1,5 +1,5 @@
 {
-  "name": "test",
+  "name": "sharon",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,25 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@fontsource/roboto": "^4.5.8",
+    "@mui/icons-material": "^5.11.0",
+    "@mui/material": "^5.11.2",
     "@next/font": "13.1.1",
+    "@reduxjs/toolkit": "^1.9.1",
+    "firebase": "^9.15.0",
+    "jquery": "^3.6.3",
     "next": "13.1.1",
+    "next-cookies": "^2.0.3",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "react-redux": "^8.0.5",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.13",
+    "postcss": "^8.4.20",
+    "tailwindcss": "^3.2.4"
   }
 }
