@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import Navbar from '../components/Navbar'
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import {
@@ -74,6 +75,7 @@ export default function Home() {
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <main className="bg-black">
+                <Navbar/>
                 <div className="bg-black h-screen flex flex-col md:flex-row">
 
                     {/* left side */}
