@@ -16,6 +16,7 @@
     "@mui/material": "^5.11.2",
     "@next/font": "13.1.1",
     "@reduxjs/toolkit": "^1.9.1",
+    "@vercel/analytics": "^0.1.6",
     "firebase": "^9.15.0",
     "jquery": "^3.6.3",
     "next": "13.1.1",
