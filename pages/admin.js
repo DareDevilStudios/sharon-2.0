@@ -53,6 +53,7 @@ export default function Home() {
             alert("No file selected")
             return;
         }
+        setCategory(Category.toLowerCase())
         for (let i = 0; i < FilesMulti.length; i++) {
             const imageRef2 = ref(storage, `${Category}/${FilesMulti[i].name + v4()}`);
             const eachProducts = collection(db, `${Category}`);
