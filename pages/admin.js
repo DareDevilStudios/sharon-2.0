@@ -42,9 +42,7 @@ export default function Home() {
                     await addDoc(productsRef, { name: Name, productUrl: url }).then(() => console.log(url));
                 })
         });
-        setInterval(() => {
-            alert(`Product named ${Name} has been uploaded successfully`)
-        }, 4000);
+        alert(`Product named ${Name} has been uploaded successfully`)
     };
 
     const [Category, setCategory] = useState("");
@@ -62,13 +60,11 @@ export default function Home() {
             await uploadBytes(imageRef2, FilesMulti[i]).then((snapshot) => {
                 getDownloadURL(snapshot.ref)
                     .then(async (url) => {
-                        await addDoc(eachProducts, { name: Category  ,productUrl: url }).then(() => console.log(url));
+                        await addDoc(eachProducts, { name: Category, productUrl: url }).then(() => console.log(url));
                     })
             });
         };
-        setInterval(() => {
-            alert(`Product added into category : ${Category}`)
-        }, 4000);
+        alert(`Product added into category : ${Category}`)
     };
 
     return (
@@ -80,7 +76,7 @@ export default function Home() {
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <main className="bg-black">
-                <Navbar/>
+                <Navbar />
                 <div className="bg-black h-screen flex flex-col md:flex-row">
 
                     {/* left side */}

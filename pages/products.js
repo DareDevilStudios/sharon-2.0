@@ -61,10 +61,10 @@ export default function products({ number }) {
 
                 {/* PRODUCTS SECTION */}
 
-                <div className="h-full w-screen bg-black p-8 ">
+                <div className="w-screen bg-black p-8 ">
 
-                    <h1 className="text-4xl font-bold m-12 text-center">
-                        Our Products
+                    <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10">
+                        {urlMove.toUpperCase()}
                     </h1>
 
                     <DisplayCards imageUrls={imageUrls} />
