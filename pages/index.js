@@ -31,31 +31,20 @@ export default function Home() {
   const shouldlog = useRef(true);
   const productsRef = collection(db, "products");
 
-
-
-  // const imagesListRef = ref(storage, "home");
-  // listAll(imagesListRef).then((response) => {
-  //   response.items.forEach((item) => {
-  //     getDownloadURL(item).then((url) => {
-  //       console.log(url);
-  //       setImageUrls((prev) => [...prev, url]);
-  //     });
-  //   });
-  // });
-
-
   useEffect(() => {
     if (shouldlog.current) {
       shouldlog.current = false;
       console.log(url);
-      const getUsers = async () => {
-        const urls = await getDocs(productsRef);
-        urls.forEach((doc) => {
-          dispatch(addUrl(doc.data()))
-        })
-      };
+      if ( imageUrls.length === 0 ) {
+        const getUsers = async () => {
+          const urls = await getDocs(productsRef);
+          urls.forEach((doc) => {
+            dispatch(addUrl(doc.data()))
+          })
+        }
+        getUsers();
+      }
 
-      getUsers();
 
     }
   }, []);
@@ -95,7 +84,7 @@ export default function Home() {
 
           {/* Right */}
 
-          <Homeimg/>
+          <Homeimg />
         </div>
 
         {/* ABOUT SECTION */}
@@ -103,7 +92,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row p-8 w-screen bg-sharon-grey">
 
           {/* left */}
-          <Aboutus/>
+          <Aboutus />
 
           {/* Right */}
           <div className="flex flex-col w-100 h-100 md:w-1/2 justify-center items-center">

@@ -14,31 +14,27 @@ import {
 import { useSelector, useDispatch } from 'react-redux'
 import { addUrl, all_images, initialSet } from '../slice/counterSlice'
 import DisplayCards from '../components/DisplayCards'
-import { storage } from "../firebase";
-import { useRouter } from 'next/router';
-import { getCookie } from 'next-cookies';
 
 export default function products({ number }) {
 
     const dispatch = useDispatch()
+
     const urlMove = useSelector((state) => state.home.url)
+    const productsRef = collection(db, urlMove);
 
     var imageUrls = useSelector((state) => state.home.image_url)
 
-
     const shouldlog = useRef(true);
-    const productsRef = collection(db, urlMove);
 
 
     useEffect(() => {
         if (shouldlog.current) {
             shouldlog.current = false;
-            console.log(urlMove);
             dispatch(initialSet())
             const getUsers = async () => {
                 const urls = await getDocs(productsRef);
                 urls.forEach((doc) => {
-                    console.log(doc.data());
+                    // console.log(doc.data());
                     dispatch(all_images(doc.data()))
                 })
             };
@@ -61,7 +57,7 @@ export default function products({ number }) {
 
                 {/* PRODUCTS SECTION */}
 
-                <div className="w-screen bg-black p-8 ">
+                <div className="w-screen bg-black p-2 md:p-8 ">
 
                     <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10 text-white">
                         {urlMove.toUpperCase()}

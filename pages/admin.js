@@ -63,6 +63,7 @@ export default function Home() {
                         await addDoc(eachProducts, { name: Category, productUrl: url }).then(() => console.log(url));
                     })
             });
+            console.log(`file ${i} uploaded`);
         };
         alert(`Product added into category : ${Category}`)
     };

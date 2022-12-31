@@ -17,7 +17,7 @@ export const counterSlice = createSlice({
     },
     addUrl: (state, action) => {
       state.home_url = [...state.home_url, action.payload]
-      console.log(state.home_url)
+      // console.log(state.home_url)
     },
     incrementByAmount: (state, action) => {
       state.value += action.payload
