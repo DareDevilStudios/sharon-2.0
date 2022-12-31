@@ -63,7 +63,7 @@ export default function products({ number }) {
 
                 <div className="w-screen bg-black p-8 ">
 
-                    <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10">
+                    <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10 text-white">
                         {urlMove.toUpperCase()}
                     </h1>
 
