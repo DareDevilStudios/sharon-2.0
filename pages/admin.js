@@ -42,7 +42,9 @@ export default function Home() {
                     await addDoc(productsRef, { name: Name, productUrl: url }).then(() => console.log(url));
                 })
         });
-        setName("")
+        setInterval(() => {
+            alert(`Product named ${Name} has been uploaded successfully`)
+        }, 4000);
     };
 
     const [Category, setCategory] = useState("");
@@ -64,7 +66,9 @@ export default function Home() {
                     })
             });
         };
-        setCategory("")
+        setInterval(() => {
+            alert(`Product added into category : ${Category}`)
+        }, 4000);
     };
 
     return (
