@@ -111,9 +111,9 @@ export default function Home() {
 
         {/* PRODUCTS SECTION */}
 
-        <div className="w-screen bg-black p-8 ">
+        <div className="w-screen bg-black p-2 md:p-8 ">
 
-          <h1 className="text-4xl font-bold my-8 text-center">
+          <h1 className="text-4xl font-bold my-8 text-center text-white">
             Our Products
           </h1>
 

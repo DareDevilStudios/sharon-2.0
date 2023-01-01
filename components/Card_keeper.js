@@ -9,15 +9,15 @@ export const Card_keeper = (props) => {
     const dispatch = useDispatch()
 
     return (
-        <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1 gap-5 justify-end w-full items-center">
+        <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1 gap-5 justify-center w-full items-center">
             {props.imageUrls.map((imageUrl) => (
 
-                <Link href={"/" + imageUrl.name} onClick={() => dispatch(urlChange(imageUrl.name)) } class="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center">
-                    
-                    <a >
-                        <img class="rounded-t-lg scale-100 h-full md:max-h-60 hover:scale-105 ease-in duration-500" src={imageUrl.productUrl}  valt="" />
+                <Link href={"/" + imageUrl.name} onClick={() => dispatch(urlChange(imageUrl.name))} class="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center">
+
+                    <a className="h-60 w-64 md:w-full relative" >
+                        <Image title={imageUrl.name} class="rounded-t-lg  hover:scale-105 ease-in duration-500 " src={imageUrl.productUrl} fill objectFit="contain" valt={imageUrl.name} />
                     </a>
-                    <div class="p-5 w-full flex flex-col items-center">
+                    <div class="px-5 py-3 w-full flex flex-col items-center">
                         <a>
                             <h5 class="mb-3 text-2xl font-bold text-center tracking-tight text-white">{imageUrl.name}</h5>
                         </a>

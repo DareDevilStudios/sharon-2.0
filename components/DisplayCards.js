@@ -1,17 +1,24 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import React from 'react'
 
 
 function DisplayCards(props) {
+
+    console.log(props.imageUrls)
+
     return (
 
+        <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1 gap-5 justify-center w-full items-center">
+            {props.imageUrls.map((imageUrl,index) => (
+                
+                <Link href={"#"+ index} class="max-w-sm border rounded-lg shadow-md bg-black border-sharon-grey flex flex-col items-center">
 
-        <div className="bg-black grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-6 w-full">
-            {props.imageUrls.map((imageUrl) => (
-                <div class="border relative border-black mx-auto rounded-lg shadow-md bg-black h-60 w-72 md:h-64 md:w-80">
-                    <Image class="rounded-t-lg h-full md:max-h-60 scale-100 hover:scale-105 ease-in duration-500" src={imageUrl.productUrl} objectFit="fit" layout="fill" alt="" />
-                    {/* <Image class="rounded-t-lg h-full md:max-h-60 scale-100 hover:scale-105 ease-in duration-500" src={imageUrl.productUrl} width={300} height={300} alt="" /> */}
-                </div>
+                    <Link href={"#"+ index} className="h-60 w-64 md:w-full relative" >
+                        <Image title={imageUrl.name} id={index} class="rounded-t-lg  hover:scale-105 ease-in duration-500 " src={imageUrl.productUrl} fill objectFit="contain" valt={imageUrl.name} />
+                    </Link>
+                </Link>
+
             )
             )}
         </div>

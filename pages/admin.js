@@ -35,7 +35,7 @@ export default function Home() {
             alert("No file selected")
             return;
         }
-        const imageRef = ref(storage, `products/${Name + v4()}`);
+        const imageRef = ref(storage, `products/${Name}`);
         await uploadBytes(imageRef, file).then((snapshot) => {
             getDownloadURL(snapshot.ref)
                 .then(async (url) => {
@@ -55,7 +55,7 @@ export default function Home() {
         }
         setCategory(Category.toLowerCase())
         for (let i = 0; i < FilesMulti.length; i++) {
-            const imageRef2 = ref(storage, `${Category}/${FilesMulti[i].name + v4()}`);
+            const imageRef2 = ref(storage, `${Category}/${Category}-${i+1}`);
             const eachProducts = collection(db, `${Category}`);
             await uploadBytes(imageRef2, FilesMulti[i]).then((snapshot) => {
                 getDownloadURL(snapshot.ref)
