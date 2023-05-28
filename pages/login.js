@@ -1,4 +1,3 @@
-import { red } from '@mui/material/colors';
 import Head from 'next/head'
 import { useEffect,useState } from 'react';
 
