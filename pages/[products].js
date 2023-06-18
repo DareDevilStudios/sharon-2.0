@@ -14,7 +14,7 @@ const Products = ({ imageUrls, urlMove }) => {
     <>
       <Head>
         <title>Sharon - {urlMove}</title>
-        <meta name="description" content={urlMove} />
+        <meta name="description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta property="og:title" content={urlMove}/>
         <meta property="og:description" content={urlMove}/>
