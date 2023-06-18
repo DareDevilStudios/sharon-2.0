@@ -15,7 +15,7 @@ export const Card_keeper = (props) => {
                 <Link href={"/" + imageUrl.name} onClick={() => dispatch(urlChange(imageUrl.name))} class="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center">
 
                     <a className="h-60 w-64 md:w-full relative" >
-                        <Image title={imageUrl.name} class="rounded-t-lg  hover:scale-105 ease-in duration-500 " src={imageUrl.productUrl} fill objectFit="contain" valt={imageUrl.name} />
+                        <Image title={imageUrl.name} class="rounded-t-lg  hover:scale-105 ease-in duration-500 " src={imageUrl.productUrl} fill objectFit="contain" valt={imageUrl.name} alt={imageUrl.name} />
                     </a>
                     <div class="px-5 py-3 w-full flex flex-col items-center">
                         <a>

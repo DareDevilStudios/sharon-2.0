@@ -30,6 +30,8 @@ const Home = ({imageUrls}) => {
         <meta name='image' content={imageUrls[0].productUrl}/>
         <meta name="twitter:title" content="Sharon Industries - Precasted Concrete Products for Fencing, Pillars, and More"></meta>
         <meta name="twitter:description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements."></meta>
+        {/* keywords */}
+        <meta name="keywords" content="sharon industries, sharon, sharonindustries, sharon industries, sharonindustries pillar, sharon industries, sharon industry, concrete works, concrete design world, concrete works,concrete design, concrete design works,sharon pillar, pillar, showpillar, well design, wall covering, interior designing, ball pillar,pillar top,pillar bottom, pond design, interior works, fencing, ernakulam concrete design, concrete design ernakulam, kerla biggest concrete design, mokkappu, water cuttings, thoolimanam, show pilar designs,garden designs, garden works, design works,house construction works, concrete designs"></meta>
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="bg-black h-screen">
