@@ -11,7 +11,7 @@ export const Card_keeper = (props) => {
     return (
         <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1 gap-5 justify-center w-full items-center">
             {props.imageUrls.map((imageUrl) => (
-
+           
                 <Link href={"/" + imageUrl.name} onClick={() => dispatch(urlChange(imageUrl.name))} class="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center">
 
                     <a className="h-60 w-64 md:w-full relative" >

@@ -1,64 +1,28 @@
 import Head from 'next/head'
 import Navbar from '../components/Navbar'
-import { useState, useEffect } from "react";
-import { db } from "../firebase";
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    listAll,
-    list,
-} from "firebase/storage";
-import {
-    collection,
-    addDoc,
-} from "firebase/firestore";
-import { storage } from "../firebase";
+import SingleUpload from '../components/SingleUpload'
+import MultipleUpload from '../components/MultipleUpload'
+import { useState } from "react";
 
 export default function Home() {
+    const [activeComponent, setActiveComponent] = useState(null);
 
-    const productsRef = collection(db, "products");
-
-    const [Name, setName] = useState("");
-    const [file, setFile] = useState(null);
-    // file upload new technique
-
-    const createProduct = async (e) => {
-        if (file == null || Name == null) {
-            alert("No file selected")
-            return;
+    const renderActiveComponent = () => {
+        switch(activeComponent) {
+            case 'single':
+                return <SingleUpload />;
+            case 'multiple':
+                return <MultipleUpload />;
+            default:
+                return (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-gray-400">
+                            <h2 className="text-2xl font-bold mb-4">Welcome to Upload Center</h2>
+                            <p>Select an upload option from the sidebar to get started</p>
+                        </div>
+                    </div>
+                );
         }
-        const imageRef = ref(storage, `products/${Name}`);
-        await uploadBytes(imageRef, file).then((snapshot) => {
-            getDownloadURL(snapshot.ref)
-                .then(async (url) => {
-                    await addDoc(productsRef, { name: Name, productUrl: url }).then(() => console.log(url));
-                })
-        });
-        alert(`Product named ${Name} has been uploaded successfully`)
-    };
-
-    const [Category, setCategory] = useState("");
-    const [FilesMulti, setFilesMulti] = useState(null);
-
-    const MultipleProducts = async () => {
-        if (FilesMulti == null || Category == null) {
-            alert("No file selected")
-            return;
-        }
-        setCategory(Category.toLowerCase())
-        for (let i = 0; i < FilesMulti.length; i++) {
-            const imageRef2 = ref(storage, `${Category}/${Category}-${i+1}`);
-            const eachProducts = collection(db, `${Category}`);
-            await uploadBytes(imageRef2, FilesMulti[i]).then((snapshot) => {
-                getDownloadURL(snapshot.ref)
-                    .then(async (url) => {
-                        await addDoc(eachProducts, { name: Category, productUrl: url }).then(() => console.log(url));
-                    })
-            });
-            console.log(`file ${i} uploaded`);
-        };
-        alert(`Product added into category : ${Category}`)
     };
 
     return (
@@ -68,71 +32,47 @@ export default function Home() {
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
-            <main className="bg-black">
+            <main className="bg-black min-h-screen">
                 <Navbar />
-                <div className="bg-black h-screen flex flex-col md:flex-row">
-
-                    {/* left side */}
-                    <section class="bg-black w-full md:w-1/2">
-                        <div class="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-
-                            <div class="w-full rounded-lg shadow border md:mt-0 sm:max-w-md xl:p-0 bg-gray-800 border-gray-700">
-                                <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
-                                    <h1 class="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
-                                        Upload SINGLE file
-                                    </h1>
-                                    <form class="space-y-4 md:space-y-6" action="#">
-                                        <div>
-                                            <label for="email" class="block mb-2 text-sm font-medium text-white">Name</label>
-                                            <input type="text" name="name" id="name" value={Name} onChange={(e) => {
-                                                setName(e.target.value);
-                                            }} class=" border  sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" placeholder="type product name" required="" />
-                                        </div>
-                                        <div>
-                                            <label for="password" class="block mb-2 text-sm font-medium text-white">File</label>
-                                            <input type="file" name="image" id="image" value={null} onChange={(e) => setFile(e.target.files[0])} class="border  sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" required="" />
-                                        </div>
-
-                                        <button type="button" onClick={createProduct} class="w-full text-white bg-sharon-or font-medium rounded-lg text-sm px-5 py-2.5 text-center ">Upload</button>
-
-                                    </form>
-                                </div>
-                            </div>
+                <div className="bg-black flex h-screen">
+                    
+                    {/* Left Sidebar */}
+                    <aside className="w-64 h-full bg-gray-900 border-r border-gray-700">
+                        <div className="p-6">
+                            <h2 className="text-xl font-bold text-white mb-6">Upload Options</h2>
+                            <nav className="space-y-4">
+                                <button
+                                    onClick={() => setActiveComponent('single')}
+                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
+                                        activeComponent === 'single'
+                                            ? 'bg-sharon-or text-white'
+                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                    }`}
+                                >
+                                    Single Upload
+                                </button>
+                                <button
+                                    onClick={() => setActiveComponent('multiple')}
+                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
+                                        activeComponent === 'multiple'
+                                            ? 'bg-sharon-or text-white'
+                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                    }`}
+                                >
+                                    Multiple Upload
+                                </button>
+                            </nav>
                         </div>
-                    </section>
+                    </aside>
 
-
-                    {/* right side */}
-                    <section class="bg-black w-full md:w-1/2">
-                        <div class="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-
-                            <div class="w-full rounded-lg shadow border md:mt-0 sm:max-w-md xl:p-0 bg-gray-800 border-gray-700">
-                                <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
-                                    <h1 class="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
-                                        Upload MULTIPLE files
-                                    </h1>
-                                    <form class="space-y-4 md:space-y-6" action="#">
-                                        <div>
-                                            <label for="email" class="block mb-2 text-sm font-medium text-white">Category</label>
-                                            <input type="text" name="name" id="name" value={Category} onChange={(e) => {
-                                                setCategory(e.target.value);
-                                            }} class="border  sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" placeholder="type product name" required="" />
-                                        </div>
-                                        <div>
-                                            <label for="password" class="block mb-2 text-sm font-medium text-white">File</label>
-                                            <input type="file" name="image" id="image" multiple onChange={(e) => setFilesMulti(e.target.files)} class="border  sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" required="" />
-                                        </div>
-
-                                        <button type="button" onClick={MultipleProducts} class="w-full text-white bg-sharon-or font-medium rounded-lg text-sm px-5 py-2.5 text-center ">Upload</button>
-
-                                    </form>
-                                </div>
-                            </div>
+                    {/* Main Content Area */}
+                    <main className="flex-1 h-full">
+                        <div className="h-full flex items-center justify-center p-8">
+                            {renderActiveComponent()}
                         </div>
-                    </section>
+                    </main>
 
                 </div>
-
             </main>
         </>
     )
