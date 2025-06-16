@@ -8,7 +8,8 @@ import {
     collection,
     getDocs,
     doc,
-    deleteDoc
+    deleteDoc,
+    updateDoc
 } from "firebase/firestore";
 
 export default function Home() {
@@ -16,6 +17,14 @@ export default function Home() {
     const [products, setProducts] = useState([]);
     const [subproducts, setSubProducts] = useState({});
     const [loading, setLoading] = useState(true);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        price: '',
+        productUrl: '',
+        newImages: []
+    });
 
     // Fetch products and their subproducts from Firebase
     const fetchProducts = async () => {
@@ -79,10 +88,101 @@ export default function Home() {
         }
     };
 
-    // Edit product (placeholder for now)
+    // Open edit modal
     const handleEdit = (product) => {
-        alert(`Edit functionality for ${product.name} - Coming soon!`);
-        // You can implement edit functionality here
+        setEditingProduct(product);
+        setEditForm({
+            name: product.name || '',
+            price: product.price || '',
+            productUrl: product.productUrl || '',
+            newImages: []
+        });
+        setEditModalOpen(true);
+    };
+
+    // Close edit modal
+    const closeEditModal = () => {
+        setEditModalOpen(false);
+        setEditingProduct(null);
+        setEditForm({
+            name: '',
+            price: '',
+            productUrl: '',
+            newImages: []
+        });
+    };
+
+    // Handle form input changes
+    const handleFormChange = (field, value) => {
+        setEditForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    // Handle image file selection
+    const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+        const imageUrls = files.map(file => URL.createObjectURL(file));
+        setEditForm(prev => ({
+            ...prev,
+            newImages: [...prev.newImages, ...imageUrls],
+            // If no current image, set the first uploaded image as main
+            productUrl: prev.productUrl || imageUrls[0] || ''
+        }));
+    };
+
+    // Remove new image
+    const removeNewImage = (index) => {
+        setEditForm(prev => {
+            const newImages = prev.newImages.filter((_, i) => i !== index);
+            return {
+                ...prev,
+                newImages,
+                // If removing the main image, set next available image as main
+                productUrl: prev.productUrl === prev.newImages[index] 
+                    ? (newImages[0] || '') 
+                    : prev.productUrl
+            };
+        });
+    };
+
+    // Save product changes
+    const handleSaveEdit = async () => {
+        if (!editingProduct) return;
+
+        try {
+            // Prepare updated data
+            const updatedData = {
+                name: editForm.name,
+                price: editForm.price,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Handle image updates
+            if (editForm.productUrl) {
+                updatedData.productUrl = editForm.productUrl;
+            } else if (editForm.newImages.length > 0) {
+                // If no current image but have new images, use the first new image
+                updatedData.productUrl = editForm.newImages[0];
+            }
+            // If both are empty, remove the image field
+            else {
+                updatedData.productUrl = null;
+            }
+
+            await updateDoc(doc(db, "products", editingProduct.id), updatedData);
+            
+            alert("Product updated successfully!");
+            closeEditModal();
+            
+            // Refresh products from database to ensure UI shows updated data
+            await fetchProducts();
+            
+        } catch (error) {
+            console.error("Error updating product:", error);
+            alert("Failed to update product.");
+        }
     };
 
     useEffect(() => {
@@ -128,16 +228,22 @@ export default function Home() {
                                                 <img 
                                                     src={product.productUrl} 
                                                     alt={product.name}
-                                                 onError={(e) => {
-    e.target.style.display = 'none'; // Hide broken images
-}}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                    }}
                                                 />
                                             </div>
                                             
                                             <div className="p-4">
-                                                <h3 className="text-white font-semibold text-lg mb-3 truncate">
+                                                <h3 className="text-white font-semibold text-lg mb-1 truncate">
                                                     {product.name}
                                                 </h3>
+                                                {product.price && (
+                                                    <p className="text-green-400 font-medium mb-3">
+                                                        ${product.price}
+                                                    </p>
+                                                )}
                                                 
                                                 {/* Additional Images */}
                                                 {subproducts[product.name] && subproducts[product.name].length > 0 && (
@@ -160,8 +266,7 @@ export default function Home() {
                                                             ))}
                                                             {subproducts[product.name].length > 6 && (
                                                                 <div className="aspect-square bg-gray-700 rounded-md flex items-center justify-center">
-                                                                    <span className="text-white text-xs">
-                                                                        +{subproducts[product.name].length - 6}
+                                                                    <span className="text-white text-xs">+{subproducts[product.name].length - 6}
                                                                     </span>
                                                                 </div>
                                                             )}
@@ -252,6 +357,135 @@ export default function Home() {
                     </main>
 
                 </div>
+
+                {/* Edit Modal */}
+                {editModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-white">Edit Product</h2>
+                                    <button
+                                        onClick={closeEditModal}
+                                        className="text-gray-400 hover:text-white text-2xl font-bold"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {/* Current Product Image */}
+                                    {editForm.productUrl && (
+                                        <div>
+                                            <label className="block text-white font-medium mb-2">Current Image</label>
+                                            <div className="aspect-square w-32 mb-4 relative">
+                                                <img 
+                                                    src={editForm.productUrl} 
+                                                    alt={editForm.name}
+                                                    className="w-full h-full object-cover rounded-lg"
+                                                    onError={(e) => {
+                                                        e.target.src = '/placeholder-image.png';
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => handleFormChange('productUrl', '')}
+                                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-red-700"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Product Name */}
+                                    <div>
+                                        <label className="block text-white font-medium mb-2">Product Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.name}
+                                            onChange={(e) => handleFormChange('name', e.target.value)}
+                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or"
+                                            placeholder="Enter product name"
+                                        />
+                                    </div>
+
+                                    {/* Product Price */}
+                                    <div>
+                                        <label className="block text-white font-medium mb-2">Price</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={editForm.price}
+                                            onChange={(e) => handleFormChange('price', e.target.value)}
+                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or"
+                                            placeholder="Enter price"
+                                        />
+                                    </div>
+
+
+
+                                    {/* Add New Images */}
+                                    <div>
+                                        <label className="block text-white font-medium mb-2">Add New Images</label>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sharon-or file:text-white hover:file:bg-orange-600"
+                                        />
+                                        
+                                        {/* Preview new images */}
+                                        {editForm.newImages.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-gray-400 text-sm mb-2">New Images Preview:</p>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {editForm.newImages.map((imageUrl, index) => (
+                                                        <div key={index} className="relative aspect-square">
+                                                            <img 
+                                                                src={imageUrl} 
+                                                                alt={`New image ${index + 1}`}
+                                                                className="w-full h-full object-cover rounded-md cursor-pointer hover:opacity-80"
+                                                                onClick={() => handleFormChange('productUrl', imageUrl)}
+                                                            />
+                                                            <button
+                                                                onClick={() => removeNewImage(index)}
+                                                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-red-700"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                            {editForm.productUrl === imageUrl && (
+                                                                <div className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                                                                    Main
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-4 pt-6">
+                                        <button
+                                            onClick={handleSaveEdit}
+                                            className="flex-1 px-6 py-3 bg-sharon-or hover:bg-orange-600 text-white font-medium rounded-lg transition-colors"
+                                        >
+                                            Save Changes
+                                        </button>
+                                        <button
+                                            onClick={closeEditModal}
+                                            className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </>
     )
