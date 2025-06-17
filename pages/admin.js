@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar'
 import SingleUpload from '../components/SingleUpload'
 import MultipleUpload from '../components/MultipleUpload'
 import { useState, useEffect } from "react";
-import { db } from "../firebase";
+import { db, storage } from "../firebase";
 import {
     collection,
     getDocs,
@@ -11,6 +11,7 @@ import {
     deleteDoc,
     updateDoc
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function Home() {
     const [activeComponent, setActiveComponent] = useState(null);
@@ -121,15 +122,50 @@ export default function Home() {
     };
 
     // Handle image file selection
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
-        const imageUrls = files.map(file => URL.createObjectURL(file));
-        setEditForm(prev => ({
-            ...prev,
-            newImages: [...prev.newImages, ...imageUrls],
-            // If no current image, set the first uploaded image as main
-            productUrl: prev.productUrl || imageUrls[0] || ''
-        }));
+        if (files.length === 0) return;
+
+        try {
+            // Create temporary URLs for preview
+            const previewUrls = files.map(file => URL.createObjectURL(file));
+            
+            // Update form with preview URLs
+            setEditForm(prev => ({
+                ...prev,
+                newImages: [...prev.newImages, ...previewUrls],
+                // If no current image, set the first uploaded image as main
+                productUrl: prev.productUrl || previewUrls[0] || ''
+            }));
+
+            // Upload files to Firebase Storage
+            const uploadedUrls = [];
+            for (const file of files) {
+                const filename = `${Date.now()}-${file.name}`;
+                const imageRef = ref(storage, `products/${filename}`);
+                const snapshot = await uploadBytes(imageRef, file);
+                const url = await getDownloadURL(snapshot.ref);
+                uploadedUrls.push(url);
+            }
+
+            // Update form with actual Firebase Storage URLs
+            setEditForm(prev => ({
+                ...prev,
+                newImages: prev.newImages.map((url, index) => {
+                    // Replace preview URL with actual Firebase Storage URL
+                    if (previewUrls.includes(url)) {
+                        const previewIndex = previewUrls.indexOf(url);
+                        return uploadedUrls[previewIndex];
+                    }
+                    return url;
+                }),
+                productUrl: prev.productUrl.startsWith('blob:') ? uploadedUrls[0] : prev.productUrl
+            }));
+
+        } catch (error) {
+            console.error("Error uploading images:", error);
+            alert("Failed to upload images. Please try again.");
+        }
     };
 
     // Remove new image
@@ -163,11 +199,8 @@ export default function Home() {
             if (editForm.productUrl) {
                 updatedData.productUrl = editForm.productUrl;
             } else if (editForm.newImages.length > 0) {
-                // If no current image but have new images, use the first new image
                 updatedData.productUrl = editForm.newImages[0];
-            }
-            // If both are empty, remove the image field
-            else {
+            } else {
                 updatedData.productUrl = null;
             }
 
@@ -224,15 +257,22 @@ export default function Home() {
                                     {products.map((product) => (
                                         <div key={product.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
                                             {/* Main Product Image */}
-                                            <div className="aspect-square relative">
-                                                <img 
-                                                    src={product.productUrl} 
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                    }}
-                                                />
+                                            <div className="relative" style={{ height: '300px' }}>
+                                                {product.productUrl ? (
+                                                    <img 
+                                                        src={product.productUrl} 
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            console.error('Image failed to load:', product.productUrl);
+                                                            e.target.src = '/placeholder-image.png';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                                                        <span className="text-gray-400">No Image</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             
                                             <div className="p-4">
@@ -421,8 +461,6 @@ export default function Home() {
                                             placeholder="Enter price"
                                         />
                                     </div>
-
-
 
                                     {/* Add New Images */}
                                     <div>
