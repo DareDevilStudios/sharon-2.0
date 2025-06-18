@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Navbar from '../components/Navbar'
 import SingleUpload from '../components/SingleUpload'
 import MultipleUpload from '../components/MultipleUpload'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db, storage } from "../firebase";
 import {
     collection,
@@ -26,6 +26,43 @@ export default function Home() {
         productUrl: '',
         newImages: []
     });
+
+    // Add scroll optimization state
+    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 12 });
+    const ITEMS_PER_PAGE = 12;
+    const SCROLL_THRESHOLD = 100;
+
+    // Optimize scroll handling with useCallback
+    const handleScroll = useCallback(() => {
+        const scrollContainer = document.querySelector('.products-container');
+        if (!scrollContainer) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        const scrollBottom = scrollHeight - scrollTop - clientHeight;
+
+        if (scrollBottom < SCROLL_THRESHOLD) {
+            setVisibleRange(prev => ({
+                start: prev.start,
+                end: Math.min(prev.end + ITEMS_PER_PAGE, products.length)
+            }));
+        }
+
+        if (scrollTop < SCROLL_THRESHOLD && prev.start > 0) {
+            setVisibleRange(prev => ({
+                start: Math.max(0, prev.start - ITEMS_PER_PAGE),
+                end: prev.end
+            }));
+        }
+    }, [products.length]);
+
+    // Add scroll event listener
+    useEffect(() => {
+        const scrollContainer = document.querySelector('.products-container');
+        if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', handleScroll);
+            return () => scrollContainer.removeEventListener('scroll', handleScroll);
+        }
+    }, [handleScroll]);
 
     // Fetch products and their subproducts from Firebase
     const fetchProducts = async () => {
@@ -230,7 +267,11 @@ export default function Home() {
                 return <MultipleUpload />;
             default:
                 return (
-                    <div className="w-full h-full overflow-y-auto">
+                    <div className="w-full h-full overflow-y-auto products-container" style={{ 
+                        scrollBehavior: 'smooth',
+                        WebkitOverflowScrolling: 'touch',
+                        overscrollBehavior: 'contain'
+                    }}>
                         <div className="p-8">
                             <div className="text-center mb-8">
                                 <h2 className="text-3xl font-bold text-white mb-4">Product Gallery</h2>
@@ -253,9 +294,17 @@ export default function Home() {
                                     <p>Upload some products using the sidebar options</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style={{
+                                    willChange: 'transform',
+                                    transform: 'translateZ(0)',
+                                    backfaceVisibility: 'hidden'
+                                }}>
                                     {products.map((product) => (
-                                        <div key={product.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                                        <div key={product.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow" style={{
+                                            willChange: 'transform',
+                                            transform: 'translateZ(0)',
+                                            backfaceVisibility: 'hidden'
+                                        }}>
                                             {/* Main Product Image */}
                                             <div className="relative" style={{ height: '300px' }}>
                                                 {product.productUrl ? (
@@ -263,6 +312,13 @@ export default function Home() {
                                                         src={product.productUrl} 
                                                         alt={product.name}
                                                         className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        style={{
+                                                            willChange: 'transform',
+                                                            transform: 'translateZ(0)',
+                                                            backfaceVisibility: 'hidden'
+                                                        }}
                                                         onError={(e) => {
                                                             console.error('Image failed to load:', product.productUrl);
                                                             e.target.src = '/placeholder-image.png';
