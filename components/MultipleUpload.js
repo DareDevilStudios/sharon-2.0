@@ -130,7 +130,7 @@ export default function MultipleUpload() {
                     setCapturedImages(prev => [...prev, newCapturedImage]);
                     
                     // Add to files array
-                    setFilesMulti(prev => [...prev, capturedFile]);
+                    setFilesMulti(prev => [...prev, { file: capturedFile, name: '', price: '' }]);
                     
                     setIsCapturing(false);
                     console.log("Photo captured successfully, size:", blob.size);
@@ -181,37 +181,43 @@ export default function MultipleUpload() {
     // Handle file input change
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
-        setFilesMulti(files);
+        setFilesMulti(files.map(file => ({ file, name: '', price: '' })));
+    };
+
+    // Handle name/price change for each file
+    const handleFileMetaChange = (index, field, value) => {
+        setFilesMulti(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
     };
 
     const MultipleProducts = async (e) => {
         e.preventDefault();
-        
         if (FilesMulti.length === 0 || Category == null || Category.trim() === "") {
             alert("Please provide both category name and files");
             return;
         }
-
-        setIsUploading(true);
-        
-        try {
-            const categoryLower = Category.toLowerCase();
-            
-            for (let i = 0; i < FilesMulti.length; i++) {
-                const imageRef2 = ref(storage, `${categoryLower}/${categoryLower}-${i+1}`);
-                const eachProducts = collection(db, categoryLower);
-                
-                await uploadBytes(imageRef2, FilesMulti[i]).then((snapshot) => {
-                    getDownloadURL(snapshot.ref)
-                        .then(async (url) => {
-                            await addDoc(eachProducts, { name: categoryLower, productUrl: url }).then(() => console.log(url));
-                        })
-                });
-                console.log(`file ${i + 1} uploaded`);
+        // Check all files have name and price
+        for (let i = 0; i < FilesMulti.length; i++) {
+            if (!FilesMulti[i].name || !FilesMulti[i].price) {
+                alert(`Please provide name and price for image ${i + 1}`);
+                return;
             }
-            
+        }
+        setIsUploading(true);
+        try {
+            const categoryName = Category; // Use as entered
+            for (let i = 0; i < FilesMulti.length; i++) {
+                const { file, name, price } = FilesMulti[i];
+                const imageRef2 = ref(storage, `${categoryName}/${name || (categoryName + '-' + (i+1))}`);
+                const eachProducts = collection(db, categoryName);
+                // Upload file
+                const snapshot = await uploadBytes(imageRef2, file);
+                // Get download URL
+                const url = await getDownloadURL(snapshot.ref);
+                // Add to Firestore
+                await addDoc(eachProducts, { name, price, productUrl: url });
+                console.log(`file ${i + 1} uploaded: ${url}`);
+            }
             alert(`${FilesMulti.length} products added to category: ${Category}`);
-            
             // Reset form
             setCategory("");
             setFilesMulti([]);
@@ -308,9 +314,31 @@ export default function MultipleUpload() {
                                     accept="image/*"
                                 />
                                 {FilesMulti.length > 0 && (
-                                    <p className="mt-2 text-sm text-gray-400">
-                                        {FilesMulti.length} file(s) selected
-                                    </p>
+                                    <div className="mt-4 space-y-4">
+                                        {FilesMulti.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-4 bg-gray-700 p-2 rounded-lg">
+                                                <img src={URL.createObjectURL(item.file)} alt={`preview-${idx}`} className="w-16 h-16 object-cover rounded" />
+                                                <div className="flex-1 grid grid-cols-2 gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Name"
+                                                        value={item.name}
+                                                        onChange={e => handleFileMetaChange(idx, 'name', e.target.value)}
+                                                        className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-600"
+                                                        required
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Price"
+                                                        value={item.price}
+                                                        onChange={e => handleFileMetaChange(idx, 'price', e.target.value)}
+                                                        className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-600"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )}

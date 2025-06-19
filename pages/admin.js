@@ -23,7 +23,6 @@ export default function Home() {
     const [editingProduct, setEditingProduct] = useState(null);
     const [editForm, setEditForm] = useState({
         name: '',
-        price: '',
         productUrl: '',
         newImages: []
     });
@@ -132,7 +131,6 @@ export default function Home() {
         setEditingProduct(product);
         setEditForm({
             name: product.name || '',
-            price: product.price || '',
             productUrl: product.productUrl || '',
             newImages: []
         });
@@ -145,7 +143,6 @@ export default function Home() {
         setEditingProduct(null);
         setEditForm({
             name: '',
-            price: '',
             productUrl: '',
             newImages: []
         });
@@ -229,7 +226,6 @@ export default function Home() {
             // Prepare updated data
             const updatedData = {
                 name: editForm.name,
-                price: editForm.price,
                 updatedAt: new Date().toISOString()
             };
 
@@ -643,11 +639,6 @@ export default function Home() {
                                                 <h3 className="text-white font-semibold text-lg mb-1 truncate">
                                                     {product.name}
                                                 </h3>
-                                                {product.price && (
-                                                    <p className="text-green-400 font-medium mb-3">
-                                                        ${product.price}
-                                                    </p>
-                                                )}
                                                 
                                                 <div className="flex gap-2">
                                                     <button
@@ -785,12 +776,18 @@ export default function Home() {
                                             <>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                     {subimages.map((subimage) => (
-                                                        <div key={subimage.id} className="aspect-square relative group">
+                                                        <div key={subimage.id} className="aspect-square relative group bg-gray-800 rounded-lg p-2 flex flex-col justify-between">
                                                             <OptimizedImage
                                                                 src={subimage.productUrl}
                                                                 alt={`${selectedProduct?.name} subimage`}
-                                                                className="w-full h-full object-cover rounded-lg"
+                                                                className="w-full h-32 object-cover rounded-lg"
                                                             />
+                                                            <div className="mt-2 text-center">
+                                                                <div className="text-white text-sm truncate">{subimage.name || <span className="text-gray-400">No Name</span>}</div>
+                                                                {subimage.price && (
+                                                                    <div className="text-green-400 text-xs mt-1">${subimage.price}</div>
+                                                                )}
+                                                            </div>
                                                             <button
                                                                 onClick={() => handleDeleteSubimage(subimage.id)}
                                                                 className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -860,7 +857,7 @@ export default function Home() {
                                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`}
                                 >
-                                    Single Upload
+                                    Product Upload
                                 </button>
                                 <button
                                     onClick={() => setActiveComponent('multiple')}
@@ -870,7 +867,7 @@ export default function Home() {
                                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`}
                                 >
-                                    Multiple Upload
+                                   Category Upload
                                 </button>
                             </nav>
                         </div>
@@ -933,19 +930,6 @@ export default function Home() {
                                             onChange={(e) => handleFormChange('name', e.target.value)}
                                             className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or"
                                             placeholder="Enter product name"
-                                        />
-                                    </div>
-
-                                    {/* Product Price */}
-                                    <div>
-                                        <label className="block text-white font-medium mb-2">Price</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={editForm.price}
-                                            onChange={(e) => handleFormChange('price', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or"
-                                            placeholder="Enter price"
                                         />
                                     </div>
 

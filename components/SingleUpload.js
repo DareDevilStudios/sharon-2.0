@@ -7,7 +7,6 @@ import { storage } from "../firebase";
 export default function SingleUpload() {
   const productsRef = collection(db, "products");
   const [Name, setName] = useState("");
-  const [price, setPrice] = useState("");
   const [file, setFile] = useState(null);
   const [uploadMethod, setUploadMethod] = useState("file"); // "file" or "camera"
   const [capturedImage, setCapturedImage] = useState(null);
@@ -150,8 +149,8 @@ export default function SingleUpload() {
   const createProduct = async (e) => {
     e.preventDefault();
 
-    if (file == null || Name == null || price == null || Name.trim() === "") {
-      alert("Please provide both name, price and file");
+    if (file == null || Name == null || Name.trim() === "") {
+      alert("Please provide both name and file");
       return;
     }
 
@@ -161,7 +160,6 @@ export default function SingleUpload() {
         getDownloadURL(snapshot.ref).then(async (url) => {
           await addDoc(productsRef, {
             name: Name,
-            price: price,
             productUrl: url,
           }).then(() => console.log(url));
         });
@@ -170,7 +168,6 @@ export default function SingleUpload() {
 
       // Reset form
       setName("");
-      setPrice("");
       setFile(null);
       setCapturedImage(null);
       setUploadMethod("file");
@@ -210,25 +207,6 @@ export default function SingleUpload() {
                 onChange={(e) => setName(e.target.value)}
                 className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter product name"
-                required
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="single-price"
-                className="block mb-2 text-sm font-medium text-white"
-              >
-                Product Price
-              </label>
-              <input
-                type="text"
-                name="price"
-                id="single-price"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter product price"
                 required
               />
             </div>
