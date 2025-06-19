@@ -40,48 +40,7 @@ const Products = ({ imageUrls, urlMove }) => {
   );
 }
 
-export async function getStaticPaths() {
-  const products = [
-    "arch",
-    "ball-pillar",
-    "beam-support",
-    "beeding",
-    "charu-support",
-    "charupadi",
-    "concerete-pots",
-    "cornis",
-    "fencing",
-    "fish-pond",
-    "flowers",
-    "furnace",
-    "gatetop",
-    "mokappu",
-    "parapet-hole",
-    "parapet",
-    "parkbench",
-    "pillar-top",
-    "pillar",
-    "products",
-    "shade-support",
-    "showpillar",
-    "sopanam",
-    "washing-table",
-    "waste-management",
-    "water-cutting",
-    "well-cover-and-support"
-  ];
-
-  const paths = products.map((product) => ({
-    params: { products: product },
-  }));
-
-  return {
-    paths,
-    fallback: false, // or 'blocking' if needed
-  };
-}
-
-export async function getStaticProps({ params }) {
+export async function getServerSideProps({ params }) {
   const urlMove = params.products;
   const productsRef = collection(db, urlMove);
 
