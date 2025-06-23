@@ -3,7 +3,7 @@ import { db } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { storage } from "../firebase";
-
+import { useConnection } from "./context/ConnectionContext";
 export default function SingleUpload() {
   const productsRef = collection(db, "products");
   const [Name, setName] = useState("");
@@ -13,6 +13,8 @@ export default function SingleUpload() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [stream, setStream] = useState(null);
+  
+  const {isOnline}=useConnection()
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -147,6 +149,7 @@ export default function SingleUpload() {
   }, [stream]);
 
   const createProduct = async (e) => {
+    
     e.preventDefault();
 
     if (file == null || Name == null || Name.trim() === "") {
@@ -155,6 +158,10 @@ export default function SingleUpload() {
     }
 
     try {
+      if(!isOnline){
+        alert(`Product "${Name}" has been queued and will be added to database after internet comes back`);
+      }
+
       const imageRef = ref(storage, `products/${Name}`);
       await uploadBytes(imageRef, file).then((snapshot) => {
         getDownloadURL(snapshot.ref).then(async (url) => {
@@ -178,6 +185,64 @@ export default function SingleUpload() {
       alert("Upload failed. Please try again.");
     }
   };
+
+
+
+  // const createProduct = async (e) => {
+  //   e.preventDefault();
+  
+  //   if (file == null || Name == null || Name.trim() === "") {
+  //     alert("Please provide both name and file");
+  //     return;
+  //   }
+  
+  //   // Check if offline and show immediate feedback
+  //   if (!isOnline) {
+  //     alert(`Product "${Name}" has been queued and will be added to database after internet comes back`);
+      
+  //     // Reset form immediately for better UX
+  //     setName("");
+  //     setFile(null);
+  //     setCapturedImage(null);
+  //     setUploadMethod("file");
+  //     stopCameraPreview();
+  //     document.getElementById("single-upload-form").reset();
+  //   }
+  
+  //   try {
+  //     const imageRef = ref(storage, `products/${Name}`);
+  //     await uploadBytes(imageRef, file).then((snapshot) => {
+  //       getDownloadURL(snapshot.ref).then(async (url) => {
+  //         await addDoc(productsRef, {
+  //           name: Name,
+  //           productUrl: url,
+  //         }).then(() => console.log(url));
+  //       });
+  //     });
+  
+  //     // Only show this alert if we're online (avoid double alerts)
+  //     if (is) {
+  //       alert(`Product named ${Name} has been uploaded successfully`);
+        
+  //       // Reset form only if online (already reset above for offline)
+  //       setName("");
+  //       setFile(null);
+  //       setCapturedImage(null);
+  //       setUploadMethod("file");
+  //       stopCameraPreview();
+  //       document.getElementById("single-upload-form").reset();
+  //     }
+      
+  //   } catch (error) {
+  //     console.error("Upload error:", error);
+      
+  //     // Only show error alert if we're online
+  //     if (navigator.onLine) {
+  //       alert("Upload failed. Please try again.");
+  //     }
+  //     // If offline, the queued message was already shown above
+  //   }
+  // };
 
   return (
     <div className="w-full max-w-md">

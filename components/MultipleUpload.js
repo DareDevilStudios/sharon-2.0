@@ -10,7 +10,7 @@ import {
     addDoc,
 } from "firebase/firestore";
 import { storage } from "../firebase";
-
+import { useConnection } from "./context/ConnectionContext";
 export default function MultipleUpload() {
     const [Category, setCategory] = useState("");
     const [FilesMulti, setFilesMulti] = useState([]);
@@ -20,7 +20,7 @@ export default function MultipleUpload() {
     const [isCapturing, setIsCapturing] = useState(false);
     const [stream, setStream] = useState(null);
     const [capturedImages, setCapturedImages] = useState([]);
-
+const {isOnline}=useConnection()
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
 
@@ -204,7 +204,12 @@ export default function MultipleUpload() {
         }
         setIsUploading(true);
         try {
-            const categoryName = Category; // Use as entered
+            const categoryName = Category;
+            if(!isOnline){
+                alert(`products for ${categoryName} added in queue after internet comes it will added to Database`)
+                setIsUploading(false)
+            }
+             // Use as entered
             for (let i = 0; i < FilesMulti.length; i++) {
                 const { file, name, price } = FilesMulti[i];
                 const imageRef2 = ref(storage, `${categoryName}/${name || (categoryName + '-' + (i+1))}`);

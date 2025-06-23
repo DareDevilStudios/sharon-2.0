@@ -13,6 +13,29 @@ import {
     addDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { TurnedInNot } from '@mui/icons-material';
+import { useConnection } from '../components/context/ConnectionContext';
+
+// Utility functions
+const PRODUCTS_KEY = 'sharon_products';
+const SUBIMAGES_KEY = 'sharon_subimages';
+
+const saveToLocalStorage = (key, value) => {
+    console.log('Saving to localStorage:', key, value);
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        console.warn('Failed to save to localStorage', key, e);
+    }
+};
+const loadFromLocalStorage = (key, fallback = null) => {
+    try {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : fallback;
+    } catch (e) {
+        return fallback;
+    }
+};
 
 export default function Home() {
     const [activeComponent, setActiveComponent] = useState(null);
@@ -31,6 +54,7 @@ export default function Home() {
     const [visibleRange, setVisibleRange] = useState({ start: 0, end: 12 });
     const ITEMS_PER_PAGE = 12;
     const SCROLL_THRESHOLD = 100;
+    const {isOnline}=useConnection()
 
     // Optimize scroll handling with useCallback
     const handleScroll = useCallback(() => {
@@ -65,9 +89,11 @@ export default function Home() {
     }, [handleScroll]);
 
     // Fetch products and their subproducts from Firebase
-    const fetchProducts = async () => {
+    const fetchProductsAndSubimages = async () => {
+        if (navigator.onLine) {
         try {
             setLoading(true);
+                // Fetch products
             const productsRef = collection(db, "products");
             const querySnapshot = await getDocs(productsRef);
             const productsData = [];
@@ -80,45 +106,72 @@ export default function Home() {
             });
             
             setProducts(productsData);
+                if (productsData.length > 0) {
+                    saveToLocalStorage(PRODUCTS_KEY, productsData);
+                }
 
-            // Fetch subproducts for each product
-            const subproductsData = {};
+                // Fetch subimages for each product
+                const subimagesData = {};
             
-            // for (const product of productsData) {
-            //     try {
-            //         const subProductRef = collection(db, product.name);
-            //         const subQuerySnapshot = await getDocs(subProductRef);
-            //         const subProductsArray = [];
+            for (const product of productsData) {
+                try {
+                    const subProductRef = collection(db, product.name);
+                    const subQuerySnapshot = await getDocs(subProductRef);
+                        const subImagesArray = [];
                     
-            //         subQuerySnapshot.forEach((doc) => {
-            //             subProductsArray.push({
-            //                 id: doc.id,
-            //                 ...doc.data()
-            //             });
-            //         });
+                    subQuerySnapshot.forEach((doc) => {
+                            subImagesArray.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
                     
-            //         subproductsData[product.name] = subProductsArray;
-            //     } catch (error) {
-            //         console.error(`Error fetching subproducts for ${product.name}:`, error);
-            //         subproductsData[product.name] = [];
-            //     }
-            // }
-            
-            // setSubProducts(subproductsData);
+                        subimagesData[product.id] = subImagesArray;
+                } catch (error) {
+                        subimagesData[product.id] = [];
+                    }
+                }
+                setSubProducts(subimagesData);
+                if (Object.keys(subimagesData).length > 0) {
+                    saveToLocalStorage(SUBIMAGES_KEY, subimagesData);
+            }
         } catch (error) {
-            console.error("Error fetching products:", error);
+                // If fetch fails, fallback to localStorage
+                setProducts(loadFromLocalStorage(PRODUCTS_KEY, []));
+                setSubProducts(loadFromLocalStorage(SUBIMAGES_KEY, {}));
         } finally {
             setLoading(false);
+            }
+        } else {
+            // Offline: load from localStorage
+            setProducts(loadFromLocalStorage(PRODUCTS_KEY, []));
+            setSubProducts(loadFromLocalStorage(SUBIMAGES_KEY, {}));
         }
     };
 
+    // On mount and on network status change
+    useEffect(() => {
+        fetchProductsAndSubimages();
+        const handleOnline = () => fetchProductsAndSubimages();
+        const handleOffline = () => fetchProductsAndSubimages();
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
     // Delete product
-    const handleDelete = async (productId) => {
+    const handleDelete = async (productId,productName) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
             try {
+                if(!isOnline){
+                    alert(`Deltion of the ${productName} is in queue after internet comes it will reflect in database `)
+                }
                 await deleteDoc(doc(db, "products", productId));
                 setProducts(products.filter(product => product.id !== productId));
-                alert("Product deleted successfully!");
+                alert(`Product ${productName} deleted successfully!`);
             } catch (error) {
                 console.error("Error deleting product:", error);
                 alert("Failed to delete product.");
@@ -166,10 +219,10 @@ export default function Home() {
             const previewUrls = files.map(file => URL.createObjectURL(file));
             
             // Update form with preview URLs
-            setEditForm(prev => ({
-                ...prev,
+        setEditForm(prev => ({
+            ...prev,
                 newImages: [...prev.newImages, ...previewUrls],
-                // If no current image, set the first uploaded image as main
+            // If no current image, set the first uploaded image as main
                 productUrl: prev.productUrl || previewUrls[0] || ''
             }));
 
@@ -244,17 +297,13 @@ export default function Home() {
             closeEditModal();
             
             // Refresh products from database to ensure UI shows updated data
-            await fetchProducts();
+            await fetchProductsAndSubimages();
             
         } catch (error) {
             console.error("Error updating product:", error);
             alert("Failed to update product.");
         }
     };
-
-    useEffect(() => {
-        fetchProducts();
-    }, []);
 
     const [subimagesModalOpen, setSubimagesModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -540,6 +589,9 @@ export default function Home() {
         if (!window.confirm("Are you sure you want to delete this image?")) return;
 
         try {
+            if(!isOnline){
+                alert(`Deletion of ${selectedProduct.name} is in queue after internet comes deletion will reflect`)
+            }
             setUploadingSubimage(true);
             // Delete from Firestore
             await deleteDoc(doc(db, selectedProduct.name, subimageId));
@@ -581,11 +633,12 @@ export default function Home() {
                                 <h2 className="text-3xl font-bold text-white mb-4">Product Gallery</h2>
                                 <p className="text-gray-400">Manage your uploaded products</p>
                                 <button 
-                                    onClick={fetchProducts}
+                                    onClick={fetchProductsAndSubimages}
                                     className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                                 >
                                     Refresh Products
                                 </button>
+                          
                             </div>
 
                             {loading ? (
@@ -612,10 +665,10 @@ export default function Home() {
                                             {/* Main Product Image */}
                                             <div className="relative" style={{ height: '300px' }}>
                                                 {product.productUrl ? (
-                                                    <img 
-                                                        src={product.productUrl} 
-                                                        alt={product.name}
-                                                        className="w-full h-full object-cover"
+                                                <img 
+                                                    src={product.productUrl} 
+                                                    alt={product.name}
+                                                    className="w-full h-full object-cover"
                                                         loading="lazy"
                                                         decoding="async"
                                                         style={{
@@ -623,11 +676,11 @@ export default function Home() {
                                                             transform: 'translateZ(0)',
                                                             backfaceVisibility: 'hidden'
                                                         }}
-                                                        onError={(e) => {
+                                                    onError={(e) => {
                                                             console.error('Image failed to load:', product.productUrl);
                                                             e.target.src = '/placeholder-image.png';
-                                                        }}
-                                                    />
+                                                    }}
+                                                />
                                                 ) : (
                                                     <div className="w-full h-full bg-gray-700 flex items-center justify-center">
                                                         <span className="text-gray-400">No Image</span>
@@ -648,7 +701,7 @@ export default function Home() {
                                                         Edit
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(product.id)}
+                                                        onClick={() => handleDelete(product.id,product.name)}
                                                         className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                                                     >
                                                         Delete
