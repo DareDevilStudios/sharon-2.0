@@ -8,11 +8,13 @@ import {
 import {
     collection,
     addDoc,
+    getDocs
 } from "firebase/firestore";
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
-export default function MultipleUpload() {
-    const [Category, setCategory] = useState("");
+import { LoginSharp } from "@mui/icons-material";
+export default function ProductUpload() {
+    const [Product, setProduct] = useState("");
     const [FilesMulti, setFilesMulti] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadMethod, setUploadMethod] = useState("file"); // "file" or "camera"
@@ -20,15 +22,16 @@ export default function MultipleUpload() {
     const [isCapturing, setIsCapturing] = useState(false);
     const [stream, setStream] = useState(null);
     const [capturedImages, setCapturedImages] = useState([]);
-const {isOnline}=useConnection()
+    const [categorylist, setCategorylist] = useState([])
+    const { isOnline } = useConnection()
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-
+    const CATEGORYLIST = 'Categories'
     // Start camera preview
     const startCameraPreview = async () => {
         try {
             console.log("Starting camera preview...");
-            
+
             const mediaStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     width: { ideal: 640 },
@@ -36,20 +39,20 @@ const {isOnline}=useConnection()
                     facingMode: 'environment' // Use back camera on mobile
                 }
             });
-            
+
             setStream(mediaStream);
             setShowPreview(true);
-            
+
             // Set video source after state update
             setTimeout(() => {
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream;
                 }
             }, 100);
-            
+
         } catch (error) {
             console.error("Camera error:", error);
-            
+
             let message = "Camera access failed: ";
             if (error.name === "NotAllowedError") {
                 message += "Permission denied. Please allow camera access.";
@@ -60,7 +63,7 @@ const {isOnline}=useConnection()
             } else {
                 message += error.message;
             }
-            
+
             alert(message);
         }
     };
@@ -82,63 +85,63 @@ const {isOnline}=useConnection()
         }
 
         setIsCapturing(true);
-        
+
         try {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             const context = canvas.getContext("2d");
-            
+
             // Set canvas dimensions to match video
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
+
             // Draw the current video frame to canvas
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
             // Check if canvas has content (not just black)
             const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             let hasContent = false;
-            
+
             for (let i = 0; i < data.length; i += 4) {
                 if (data[i] > 10 || data[i + 1] > 10 || data[i + 2] > 10) {
                     hasContent = true;
                     break;
                 }
             }
-            
+
             if (!hasContent) {
                 throw new Error("Camera appears to be blocked or not working");
             }
-            
+
             // Convert canvas to blob and create file
             canvas.toBlob((blob) => {
                 if (blob && blob.size > 0) {
                     const capturedFile = new File([blob], `captured-${Date.now()}.jpg`, {
                         type: "image/jpeg"
                     });
-                    
+
                     const imageUrl = canvas.toDataURL("image/jpeg");
-                    
+
                     // Add to captured images array
                     const newCapturedImage = {
                         file: capturedFile,
                         url: imageUrl,
                         id: Date.now()
                     };
-                    
+
                     setCapturedImages(prev => [...prev, newCapturedImage]);
-                    
+
                     // Add to files array
                     setFilesMulti(prev => [...prev, { file: capturedFile, name: '', price: '' }]);
-                    
+
                     setIsCapturing(false);
                     console.log("Photo captured successfully, size:", blob.size);
                 } else {
                     throw new Error("Failed to create image file");
                 }
             }, "image/jpeg", 0.8);
-            
+
         } catch (error) {
             console.error("Capture error:", error);
             setIsCapturing(false);
@@ -149,7 +152,7 @@ const {isOnline}=useConnection()
     // Remove a captured image
     const removeCapturedImage = (imageId) => {
         setCapturedImages(prev => prev.filter(img => img.id !== imageId));
-        
+
         // Also remove from files array
         const imageIndex = capturedImages.findIndex(img => img.id === imageId);
         if (imageIndex !== -1) {
@@ -191,8 +194,8 @@ const {isOnline}=useConnection()
 
     const MultipleProducts = async (e) => {
         e.preventDefault();
-        if (FilesMulti.length === 0 || Category == null || Category.trim() === "") {
-            alert("Please provide both category name and files");
+        if (FilesMulti.length === 0 || Product == null || Product.trim() === "") {
+            alert("Please provide both product name and files");
             return;
         }
         // Check all files have name and price
@@ -204,16 +207,16 @@ const {isOnline}=useConnection()
         }
         setIsUploading(true);
         try {
-            const categoryName = Category;
-            if(!isOnline){
-                alert(`products for ${categoryName} added in queue after internet comes it will added to Database`)
+            const productName = Product;
+            if (!isOnline) {
+                alert(`products for ${productName} added in queue after internet comes it will added to Database`)
                 setIsUploading(false)
             }
-             // Use as entered
+            // Use as entered
             for (let i = 0; i < FilesMulti.length; i++) {
                 const { file, name, price } = FilesMulti[i];
-                const imageRef2 = ref(storage, `${categoryName}/${name || (categoryName + '-' + (i+1))}`);
-                const eachProducts = collection(db, categoryName);
+                const imageRef2 = ref(storage, `${productName}/${name || (productName + '-' + (i + 1))}`);
+                const eachProducts = collection(db, productName);
                 // Upload file
                 const snapshot = await uploadBytes(imageRef2, file);
                 // Get download URL
@@ -222,9 +225,9 @@ const {isOnline}=useConnection()
                 await addDoc(eachProducts, { name, price, productUrl: url });
                 console.log(`file ${i + 1} uploaded: ${url}`);
             }
-            alert(`${FilesMulti.length} products added to category: ${Category}`);
+            alert(`${FilesMulti.length} products added to product: ${Product}`);
             // Reset form
-            setCategory("");
+            setProduct("");
             setFilesMulti([]);
             setCapturedImages([]);
             setUploadMethod("file");
@@ -238,29 +241,92 @@ const {isOnline}=useConnection()
         }
     };
 
+    const saveToLocalStorage = (key, value) => {
+        console.log('Saving to localStorage:', key, value);
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+            console.warn('Failed to save to localStorage', key, e);
+        }
+    };
+    const loadFromLocalStorage = (key, fallback = null) => {
+        try {
+            const val = localStorage.getItem(key);
+            return val ? JSON.parse(val) : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    };
+
+    const fetchProductsAndSubimages = async () => {
+
+        if (isOnline) {
+            try {
+                const productsRef = collection(db, "products");
+                const querySnapshot = await getDocs(productsRef);
+                const categoryData = [];
+                querySnapshot.forEach((doc) => {
+                    categoryData.push({
+                        name: doc.data().name
+                    });
+                });
+                setCategorylist(categoryData);
+              
+
+
+
+                if (categoryData.length > 0) {
+                    saveToLocalStorage(CATEGORYLIST, categorylist);
+                }
+
+
+
+            } catch (error) {
+                // If fetch fails, fallback to localStorage
+                setCategorylist(loadFromLocalStorage(CATEGORYLIST, []));
+
+            }
+        } else {
+            // Offline: load from localStorage
+            setCategorylist(loadFromLocalStorage(CATEGORYLIST, []));
+
+        }
+    };
+
+    useEffect(() => {
+
+        fetchProductsAndSubimages()
+        console.log("useEffect");
+
+    }, [])
+
+
     return (
         <div className="w-full max-w-md">
             <div className="w-full rounded-lg shadow border bg-gray-800 border-gray-700">
                 <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
                     <h1 className="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
-                        Upload Multiple Files
+                        Upload Multiple Products
                     </h1>
-                    
+
                     <form id="multiple-upload-form" className="space-y-4 md:space-y-6" onSubmit={MultipleProducts}>
                         <div>
-                            <label htmlFor="multiple-category" className="block mb-2 text-sm font-medium text-white">
-                                Category Name
+                            <label htmlFor="multiple-product" className="block mb-2 text-sm font-medium text-white">
+                                Product Name
                             </label>
-                            <input 
-                                type="text" 
-                                name="category" 
-                                id="multiple-category" 
-                                value={Category} 
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" 
-                                placeholder="Enter category name" 
-                                required 
-                            />
+                            <select
+                                value={Product}
+                                onChange={e => setProduct(e.target.value)}
+                                className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+                                required
+                            >
+                                <option value="">Select a product</option>
+                                {categorylist.map((cat, idx) => (
+
+
+                                    <option key={idx} value={cat.name} >{cat.name}</option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Upload Method Selection */}
@@ -276,11 +342,10 @@ const {isOnline}=useConnection()
                                         clearAllCapturedImages();
                                         stopCameraPreview();
                                     }}
-                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        uploadMethod === "file"
-                                            ? "bg-sharon-or text-white"
-                                            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${uploadMethod === "file"
+                                        ? "bg-sharon-or text-white"
+                                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                        }`}
                                 >
                                     📁 File Upload
                                 </button>
@@ -291,11 +356,10 @@ const {isOnline}=useConnection()
                                         setFilesMulti([]);
                                         stopCameraPreview();
                                     }}
-                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        uploadMethod === "camera"
-                                            ? "bg-sharon-or text-white"
-                                            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${uploadMethod === "camera"
+                                        ? "bg-sharon-or text-white"
+                                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                        }`}
                                 >
                                     📷 Camera
                                 </button>
@@ -308,14 +372,14 @@ const {isOnline}=useConnection()
                                 <label htmlFor="multiple-files" className="block mb-2 text-sm font-medium text-white">
                                     Select Files
                                 </label>
-                                <input 
-                                    type="file" 
-                                    name="images" 
-                                    id="multiple-files" 
-                                    multiple 
-                                    onChange={handleFileChange} 
-                                    className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500" 
-                                    required 
+                                <input
+                                    type="file"
+                                    name="images"
+                                    id="multiple-files"
+                                    multiple
+                                    onChange={handleFileChange}
+                                    className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+                                    required
                                     accept="image/*"
                                 />
                                 {FilesMulti.length > 0 && (
@@ -354,7 +418,7 @@ const {isOnline}=useConnection()
                                 <label className="block mb-2 text-sm font-medium text-white">
                                     Camera Capture
                                 </label>
-                                
+
                                 {!showPreview && (
                                     <button
                                         type="button"
@@ -383,7 +447,7 @@ const {isOnline}=useConnection()
                                                 className="w-full h-64 object-cover"
                                                 style={{ transform: 'scaleX(-1)' }} // Mirror effect
                                             />
-                                            
+
                                             {/* Camera overlay/frame */}
                                             <div className="absolute inset-0 border-2 border-white/20 rounded-lg pointer-events-none">
                                                 <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 border-white/50"></div>
@@ -399,7 +463,7 @@ const {isOnline}=useConnection()
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
@@ -435,7 +499,7 @@ const {isOnline}=useConnection()
                                                 Clear All
                                             </button>
                                         </div>
-                                        
+
                                         <div className="grid grid-cols-2 gap-2">
                                             {capturedImages.map((image) => (
                                                 <div key={image.id} className="relative group">
@@ -471,8 +535,8 @@ const {isOnline}=useConnection()
                             </div>
                         )}
 
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={isUploading || FilesMulti.length === 0}
                             className="w-full text-white bg-sharon-or hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
                         >

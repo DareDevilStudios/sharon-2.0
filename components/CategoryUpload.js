@@ -4,7 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
-export default function SingleUpload() {
+export default function CategoryUpload() {
   const productsRef = collection(db, "products");
   const [Name, setName] = useState("");
   const [file, setFile] = useState(null);
@@ -159,7 +159,7 @@ export default function SingleUpload() {
 
     try {
       if(!isOnline){
-        alert(`Product "${Name}" has been queued and will be added to database after internet comes back`);
+        alert(`Category "${Name}" has been queued and will be added to database after internet comes back`);
       }
 
       const imageRef = ref(storage, `products/${Name}`);
@@ -171,7 +171,7 @@ export default function SingleUpload() {
           }).then(() => console.log(url));
         });
       });
-      alert(`Product named ${Name} has been uploaded successfully`);
+      alert(`Category  ${Name} has been uploaded successfully`);
 
       // Reset form
       setName("");
@@ -249,7 +249,7 @@ export default function SingleUpload() {
       <div className="w-full rounded-lg shadow border bg-gray-800 border-gray-700">
         <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
           <h1 className="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
-            Upload Single File
+            Upload Single Category
           </h1>
           
           <form
@@ -262,7 +262,7 @@ export default function SingleUpload() {
                 htmlFor="single-name"
                 className="block mb-2 text-sm font-medium text-white"
               >
-                Product Name
+                Category Name
               </label>
               <input
                 type="text"
@@ -271,7 +271,7 @@ export default function SingleUpload() {
                 value={Name}
                 onChange={(e) => setName(e.target.value)}
                 className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter product name"
+                placeholder="Enter Category name"
                 required
               />
             </div>
@@ -440,7 +440,7 @@ export default function SingleUpload() {
               className="w-full text-white bg-sharon-or hover:bg-orange-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
               disabled={!file}
             >
-              Upload Product
+              Upload Category
             </button>
           </form>
         </div>

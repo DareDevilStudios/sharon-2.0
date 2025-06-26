@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import Navbar from '../components/Navbar'
-import SingleUpload from '../components/SingleUpload'
-import MultipleUpload from '../components/MultipleUpload'
+import SingleUpload from '../components/CategoryUpload'
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db, storage } from "../firebase";
 import {
@@ -15,6 +15,8 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { TurnedInNot } from '@mui/icons-material';
 import { useConnection } from '../components/context/ConnectionContext';
+import ProductUpload from '../components/ProductUpload';
+import CategoryUpload from '../components/CategoryUpload';
 
 // Utility functions
 const PRODUCTS_KEY = 'sharon_products';
@@ -36,6 +38,35 @@ const loadFromLocalStorage = (key, fallback = null) => {
         return fallback;
     }
 };
+
+async function createImageBlob(imageUrl) {
+    try {
+
+        console.log("here");
+        
+        const response = await fetch(imageUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const imageBlob = await response.blob();
+        
+        // Verify it's actually an image
+        if (!imageBlob.type.startsWith('image/')) {
+            throw new Error('Not a valid image type');
+        }
+        
+        console.log(`Image blob created: ${imageBlob.size} bytes, type: ${imageBlob.type}`);
+        return imageBlob;
+        
+    } catch (error) {
+        console.error('Failed to create image blob:', error);
+        return null;
+    }
+}
+
+
 
 export default function Home() {
     const [activeComponent, setActiveComponent] = useState(null);
@@ -105,6 +136,18 @@ export default function Home() {
                 });
             });
             
+            const products = await Promise.all(
+                productsData.map(async (data) => {
+                    let imageBlob = await createImageBlob(data.productUrl);
+                    return {
+                        ...data,
+                        offlineImage: imageBlob
+                    };
+                })
+            );
+            
+            console.log("blob", products); // Now this will have all products with images
+            
             setProducts(productsData);
                 if (productsData.length > 0) {
                     saveToLocalStorage(PRODUCTS_KEY, productsData);
@@ -162,6 +205,21 @@ export default function Home() {
         };
     }, []);
 
+
+
+    async function deleteEntireCollection(collectionName) {
+        const collectionRef = collection(db, collectionName);
+        const snapshot = await getDocs(collectionRef);
+        
+        // Delete all documents in the collection
+        const deletePromises = snapshot.docs.map(document => 
+          deleteDoc(doc(db, collectionName, document.id))
+        );
+        
+        await Promise.all(deletePromises);
+        console.log(`Collection '${collectionName}' deleted successfully`);
+      }
+
     // Delete product
     const handleDelete = async (productId,productName) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
@@ -170,6 +228,7 @@ export default function Home() {
                     alert(`Deltion of the ${productName} is in queue after internet comes it will reflect in database `)
                 }
                 await deleteDoc(doc(db, "products", productId));
+                await deleteEntireCollection(productName)
                 setProducts(products.filter(product => product.id !== productId));
                 alert(`Product ${productName} deleted successfully!`);
             } catch (error) {
@@ -618,9 +677,9 @@ export default function Home() {
     const renderActiveComponent = () => {
         switch(activeComponent) {
             case 'single':
-                return <SingleUpload />;
+                return <CategoryUpload/>;
             case 'multiple':
-                return <MultipleUpload />;
+                return <ProductUpload/>;
             default:
                 return (
                     <div className="w-full h-full overflow-y-auto products-container" style={{ 
@@ -910,7 +969,7 @@ export default function Home() {
                                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`}
                                 >
-                                    Product Upload
+                                    Category Upload
                                 </button>
                                 <button
                                     onClick={() => setActiveComponent('multiple')}
@@ -920,7 +979,8 @@ export default function Home() {
                                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`}
                                 >
-                                   Category Upload
+                                     Products Upload
+                                  
                                 </button>
                             </nav>
                         </div>
