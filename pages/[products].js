@@ -30,8 +30,9 @@ const Products = ({ imageUrls, urlMove }) => {
 
         {/* PRODUCTS SECTION */}
         <div className="w-screen bg-black p-2 md:p-8">
+        
           <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10 text-white">
-            {urlMove.toUpperCase()}
+            {urlMove.toUpperCase()} 
           </h1>
           <DisplayCards imageUrls={imageUrls} />
         </div>
