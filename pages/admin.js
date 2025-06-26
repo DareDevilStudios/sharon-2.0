@@ -342,7 +342,14 @@ export default function Home() {
             };
 
             // Handle image updates
-            if (editForm.productUrl) {
+            if (editCapturedImage) {
+                // Upload to Firebase
+                const filename = `edit-captured-${Date.now()}.jpg`;
+                const imageRef = ref(storage, `products/${filename}`);
+                const snapshot = await uploadBytes(imageRef, editCapturedImage.file);
+                const url = await getDownloadURL(snapshot.ref);
+                updatedData.productUrl = url;
+            } else if (editForm.productUrl) {
                 updatedData.productUrl = editForm.productUrl;
             } else if (editForm.newImages.length > 0) {
                 updatedData.productUrl = editForm.newImages[0];
@@ -379,6 +386,9 @@ export default function Home() {
     const [cameraStream, setCameraStream] = useState(null);
     const videoRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
+    const [subimageName, setSubimageName] = useState('');
+    const [subimagePrice, setSubimagePrice] = useState('');
+    const [pendingSubimageFile, setPendingSubimageFile] = useState(null);
 
     // Function to preload images
     const preloadImages = useCallback((urls) => {
@@ -531,33 +541,11 @@ export default function Home() {
     }, [preloadedImages]);
 
     // Function to handle subimage upload
-    const handleSubimageUpload = async (e) => {
+    const handleSubimageUpload = (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
-
-        try {
-            setUploadingSubimage(true);
-            for (const file of files) {
-                const filename = `${Date.now()}-${file.name}`;
-                const imageRef = ref(storage, `products/${selectedProduct.name}/${filename}`);
-                const snapshot = await uploadBytes(imageRef, file);
-                const url = await getDownloadURL(snapshot.ref);
-                
-                // Add to subimages collection
-                await addDoc(collection(db, selectedProduct.name), {
-                    productUrl: url,
-                    createdAt: new Date().toISOString()
-                });
-            }
-            
-            // Refresh subimages
-            await fetchSubimages(selectedProduct.name, subimagesPage);
-        } catch (error) {
-            console.error("Error uploading subimage:", error);
-            alert("Failed to upload image. Please try again.");
-        } finally {
-            setUploadingSubimage(false);
-        }
+        setPendingSubimageFile(files[0]);
+        setCapturedImage(null); // clear camera image if any
     };
 
     // Function to handle camera capture
@@ -599,6 +587,8 @@ export default function Home() {
             // Add to subimages collection
             await addDoc(collection(db, selectedProduct.name), {
                 productUrl: url,
+                name: subimageName,
+                price: subimagePrice,
                 createdAt: new Date().toISOString()
             });
 
@@ -673,6 +663,39 @@ export default function Home() {
             handleCancelCapturedImage();
         }
     }, [subimagesModalOpen]);
+
+    const handleConfirmSubimageUpload = async () => {
+        if (!pendingSubimageFile) return;
+        try {
+            setUploadingSubimage(true);
+            const filename = `${Date.now()}-${pendingSubimageFile.name}`;
+            const imageRef = ref(storage, `products/${selectedProduct.name}/${filename}`);
+            const snapshot = await uploadBytes(imageRef, pendingSubimageFile);
+            const url = await getDownloadURL(snapshot.ref);
+
+            await addDoc(collection(db, selectedProduct.name), {
+                productUrl: url,
+                name: subimageName,
+                price: subimagePrice,
+                createdAt: new Date().toISOString()
+            });
+
+            await fetchSubimages(selectedProduct.name, subimagesPage);
+            setPendingSubimageFile(null);
+            setSubimageName('');
+            setSubimagePrice('');
+        } catch (error) {
+            alert('Failed to upload image. Please try again.');
+        } finally {
+            setUploadingSubimage(false);
+        }
+    };
+
+    const handleCancelPendingSubimage = () => {
+        setPendingSubimageFile(null);
+        setSubimageName('');
+        setSubimagePrice('');
+    };
 
     const renderActiveComponent = () => {
         switch(activeComponent) {
@@ -849,24 +872,42 @@ export default function Home() {
                                         )}
 
                                         {/* Captured Image Preview */}
-                                        {capturedImage && (
+                                        {(pendingSubimageFile || capturedImage) && (
                                             <div className="mb-6">
                                                 <div className="relative">
                                                     <img
-                                                        src={capturedImage.url}
-                                                        alt="Captured preview"
+                                                        src={pendingSubimageFile ? URL.createObjectURL(pendingSubimageFile) : capturedImage?.url}
+                                                        alt="Preview"
                                                         className="w-full h-64 object-contain rounded-lg bg-gray-800"
                                                     />
+                                                    <div className="mt-2 space-y-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Name"
+                                                            value={subimageName}
+                                                            onChange={e => setSubimageName(e.target.value)}
+                                                            className="w-full px-3 py-2 rounded bg-gray-800 text-white border border-gray-600"
+                                                            required
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Price"
+                                                            value={subimagePrice}
+                                                            onChange={e => setSubimagePrice(e.target.value)}
+                                                            className="w-full px-3 py-2 rounded bg-gray-800 text-white border border-gray-600"
+                                                            required
+                                                        />
+                                                    </div>
                                                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4">
                                                         <button
-                                                            onClick={handleCapturedImageUpload}
-                                                            disabled={uploadingSubimage}
+                                                            onClick={handleConfirmSubimageUpload}
+                                                            disabled={uploadingSubimage || !subimageName || !subimagePrice}
                                                             className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                                                         >
                                                             {uploadingSubimage ? 'Uploading...' : 'Confirm & Upload'}
                                                         </button>
                                                         <button
-                                                            onClick={handleCancelCapturedImage}
+                                                            onClick={handleCancelPendingSubimage}
                                                             className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                                                         >
                                                             Cancel
@@ -935,6 +976,61 @@ export default function Home() {
         }
     };
 
+    const [showEditCamera, setShowEditCamera] = useState(false);
+    const [editCameraStream, setEditCameraStream] = useState(null);
+    const editVideoRef = useRef(null);
+    const [editCapturedImage, setEditCapturedImage] = useState(null);
+
+    const startEditCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setEditCameraStream(stream);
+            setShowEditCamera(true);
+        } catch (err) {
+            alert("Camera error: " + err.message);
+        }
+    };
+
+    const stopEditCamera = () => {
+        if (editCameraStream) {
+            editCameraStream.getTracks().forEach(track => track.stop());
+            setEditCameraStream(null);
+        }
+        setShowEditCamera(false);
+    };
+
+    useEffect(() => {
+        if (showEditCamera && editCameraStream && editVideoRef.current) {
+            editVideoRef.current.srcObject = editCameraStream;
+        }
+        return () => {
+            if (editVideoRef.current) {
+                editVideoRef.current.srcObject = null;
+            }
+        };
+    }, [showEditCamera, editCameraStream]);
+
+    const captureEditPhoto = () => {
+        if (!editVideoRef.current || !editVideoRef.current.srcObject) return;
+        const video = editVideoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => {
+            if (blob) {
+                const file = new File([blob], `edit-captured-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                setEditCapturedImage({ file, url: URL.createObjectURL(blob) });
+                stopEditCamera();
+            }
+        }, 'image/jpeg');
+    };
+
+    const removeEditCapturedImage = () => {
+        if (editCapturedImage?.url) URL.revokeObjectURL(editCapturedImage.url);
+        setEditCapturedImage(null);
+    };
+
     return (
         <>
             <Head>
@@ -944,7 +1040,7 @@ export default function Home() {
             </Head>
             <main className="bg-black min-h-screen">
                 <Navbar />
-                <div className="bg-black flex h-screen">
+  <div className="bg-black flex h-screen pt-16"> 
                     
                     {/* Left Sidebar */}
                     <aside className="w-64 h-full bg-gray-900 border-r border-gray-700">
@@ -1087,6 +1183,52 @@ export default function Home() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Camera Button */}
+                                    <button
+                                        type="button"
+                                        onClick={showEditCamera ? stopEditCamera : startEditCamera}
+                                        className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    >
+                                        {showEditCamera ? "Close Camera" : "Take Photo"}
+                                    </button>
+
+                                    {/* Camera Preview */}
+                                    {showEditCamera && editCameraStream && (
+                                        <div className="my-4">
+                                            <video
+                                                ref={editVideoRef}
+                                                autoPlay
+                                                playsInline
+                                                className="w-full h-64 object-cover rounded-lg"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={captureEditPhoto}
+                                                className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                                            >
+                                                Capture
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Captured Image Preview */}
+                                    {editCapturedImage && (
+                                        <div className="my-4">
+                                            <img
+                                                src={editCapturedImage.url}
+                                                alt="Captured"
+                                                className="w-full h-64 object-contain rounded-lg bg-gray-800"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={removeEditCapturedImage}
+                                                className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Action Buttons */}
                                     <div className="flex gap-4 pt-6">

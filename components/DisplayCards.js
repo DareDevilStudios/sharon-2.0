@@ -55,7 +55,9 @@ function DisplayCards(props) {
                                 objectFit="contain" 
                                 alt={imageUrl.name} 
                             />
+                          
                         </Link>
+                        <p>{imageUrl.name}</p>
                     </Link>
                 ))}
             </div>
