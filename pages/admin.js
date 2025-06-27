@@ -389,6 +389,7 @@ export default function Home() {
     const [subimageName, setSubimageName] = useState('');
     const [subimagePrice, setSubimagePrice] = useState('');
     const [pendingSubimageFile, setPendingSubimageFile] = useState(null);
+    const [pendingSubimages, setPendingSubimages] = useState([]);
 
     // Function to preload images
     const preloadImages = useCallback((urls) => {
@@ -544,71 +545,31 @@ export default function Home() {
     const handleSubimageUpload = (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
-        setPendingSubimageFile(files[0]);
-        setCapturedImage(null); // clear camera image if any
+        setPendingSubimages(prev => [
+            ...prev,
+            ...files.map(file => ({
+                file,
+                url: URL.createObjectURL(file),
+                name: '',
+                price: '',
+                source: 'file'
+            }))
+        ]);
     };
 
     // Function to handle camera capture
     const handleCameraCapture = async () => {
         if (!videoRef.current) return;
-
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = videoRef.current.videoWidth;
-            canvas.height = videoRef.current.videoHeight;
-            canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-            
-            // Convert canvas to blob
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-            const imageUrl = URL.createObjectURL(blob);
-            setCapturedImage({ blob, url: imageUrl });
-            stopCamera();
-            setShowCamera(false);
-        } catch (error) {
-            console.error("Error capturing image:", error);
-            alert("Failed to capture image. Please try again.");
-        }
-    };
-
-    // Function to handle captured image upload
-    const handleCapturedImageUpload = async () => {
-        if (!capturedImage) return;
-
-        try {
-            setUploadingSubimage(true);
-            const file = new File([capturedImage.blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
-
-            // Upload the captured image
-            const filename = `${Date.now()}-${file.name}`;
-            const imageRef = ref(storage, `products/${selectedProduct.name}/${filename}`);
-            const snapshot = await uploadBytes(imageRef, file);
-            const url = await getDownloadURL(snapshot.ref);
-
-            // Add to subimages collection
-            await addDoc(collection(db, selectedProduct.name), {
-                productUrl: url,
-                name: subimageName,
-                price: subimagePrice,
-                createdAt: new Date().toISOString()
-            });
-
-            // Refresh subimages
-            await fetchSubimages(selectedProduct.name, subimagesPage);
-            setCapturedImage(null);
-        } catch (error) {
-            console.error("Error uploading captured image:", error);
-            alert("Failed to upload image. Please try again.");
-        } finally {
-            setUploadingSubimage(false);
-        }
-    };
-
-    // Function to cancel captured image
-    const handleCancelCapturedImage = () => {
-        if (capturedImage?.url) {
-            URL.revokeObjectURL(capturedImage.url);
-        }
-        setCapturedImage(null);
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+        const url = URL.createObjectURL(blob);
+        setPendingSubimages(prev => [
+            ...prev,
+            { file: new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' }), url, name: '', price: '', source: 'camera' }
+        ]);
     };
 
     // Function to handle camera setup
@@ -660,42 +621,8 @@ export default function Home() {
         if (!subimagesModalOpen) {
             stopCamera();
             setShowCamera(false);
-            handleCancelCapturedImage();
         }
     }, [subimagesModalOpen]);
-
-    const handleConfirmSubimageUpload = async () => {
-        if (!pendingSubimageFile) return;
-        try {
-            setUploadingSubimage(true);
-            const filename = `${Date.now()}-${pendingSubimageFile.name}`;
-            const imageRef = ref(storage, `products/${selectedProduct.name}/${filename}`);
-            const snapshot = await uploadBytes(imageRef, pendingSubimageFile);
-            const url = await getDownloadURL(snapshot.ref);
-
-            await addDoc(collection(db, selectedProduct.name), {
-                productUrl: url,
-                name: subimageName,
-                price: subimagePrice,
-                createdAt: new Date().toISOString()
-            });
-
-            await fetchSubimages(selectedProduct.name, subimagesPage);
-            setPendingSubimageFile(null);
-            setSubimageName('');
-            setSubimagePrice('');
-        } catch (error) {
-            alert('Failed to upload image. Please try again.');
-        } finally {
-            setUploadingSubimage(false);
-        }
-    };
-
-    const handleCancelPendingSubimage = () => {
-        setPendingSubimageFile(null);
-        setSubimageName('');
-        setSubimagePrice('');
-    };
 
     const renderActiveComponent = () => {
         switch(activeComponent) {
@@ -871,49 +798,40 @@ export default function Home() {
                                             </div>
                                         )}
 
-                                        {/* Captured Image Preview */}
-                                        {(pendingSubimageFile || capturedImage) && (
-                                            <div className="mb-6">
-                                                <div className="relative">
-                                                    <img
-                                                        src={pendingSubimageFile ? URL.createObjectURL(pendingSubimageFile) : capturedImage?.url}
-                                                        alt="Preview"
-                                                        className="w-full h-64 object-contain rounded-lg bg-gray-800"
-                                                    />
-                                                    <div className="mt-2 space-y-2">
+                                        {pendingSubimages.length > 0 && (
+                                            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {pendingSubimages.map((img, idx) => (
+                                                    <div key={idx} className="relative bg-gray-800 p-4 rounded-lg">
+                                                        <img src={img.url} alt="Preview" className="w-full h-48 object-contain rounded" />
                                                         <input
                                                             type="text"
                                                             placeholder="Name"
-                                                            value={subimageName}
-                                                            onChange={e => setSubimageName(e.target.value)}
-                                                            className="w-full px-3 py-2 rounded bg-gray-800 text-white border border-gray-600"
-                                                            required
+                                                            value={img.name}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setPendingSubimages(prev => prev.map((item, i) => i === idx ? { ...item, name: val } : item));
+                                                            }}
+                                                            className="w-full mt-2 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600"
                                                         />
                                                         <input
                                                             type="number"
                                                             placeholder="Price"
-                                                            value={subimagePrice}
-                                                            onChange={e => setSubimagePrice(e.target.value)}
-                                                            className="w-full px-3 py-2 rounded bg-gray-800 text-white border border-gray-600"
-                                                            required
+                                                            value={img.price}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setPendingSubimages(prev => prev.map((item, i) => i === idx ? { ...item, price: val } : item));
+                                                            }}
+                                                            className="w-full mt-2 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600"
                                                         />
-                                                    </div>
-                                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4">
                                                         <button
-                                                            onClick={handleConfirmSubimageUpload}
-                                                            disabled={uploadingSubimage || !subimageName || !subimagePrice}
-                                                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-                                                        >
-                                                            {uploadingSubimage ? 'Uploading...' : 'Confirm & Upload'}
-                                                        </button>
-                                                        <button
-                                                            onClick={handleCancelPendingSubimage}
-                                                            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                                                        >
-                                                            Cancel
-                                                        </button>
+                                                            onClick={() => {
+                                                                URL.revokeObjectURL(img.url);
+                                                                setPendingSubimages(prev => prev.filter((_, i) => i !== idx));
+                                                            }}
+                                                            className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                                                        >×</button>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         )}
 
@@ -967,6 +885,32 @@ export default function Home() {
                                                 )}
                                             </>
                                         )}
+
+                                      {pendingSubimages.length > 0 ?  <button
+                                            onClick={async () => {
+                                                setUploadingSubimage(true);
+                                                for (const img of pendingSubimages) {
+                                                    if (!img.name || !img.price) continue; // skip incomplete
+                                                    const filename = `${Date.now()}-${img.file.name}`;
+                                                    const imageRef = ref(storage, `products/${selectedProduct.name}/${filename}`);
+                                                    const snapshot = await uploadBytes(imageRef, img.file);
+                                                    const url = await getDownloadURL(snapshot.ref);
+                                                    await addDoc(collection(db, selectedProduct.name), {
+                                                        productUrl: url,
+                                                        name: img.name,
+                                                        price: img.price,
+                                                        createdAt: new Date().toISOString()
+                                                    });
+                                                }
+                                                setPendingSubimages([]);
+                                                await fetchSubimages(selectedProduct.name, subimagesPage);
+                                                setUploadingSubimage(false);
+                                            }}
+                                            disabled={uploadingSubimage || pendingSubimages.some(img => !img.name || !img.price)}
+                                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors p-5"
+                                        >
+                                            {uploadingSubimage ? 'Uploading...' : 'Confirm & Upload All'}
+                                        </button>:""}
                                     </div>
                                 </div>
                             </div>

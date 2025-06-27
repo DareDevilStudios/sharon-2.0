@@ -184,7 +184,10 @@ export default function ProductUpload() {
     // Handle file input change
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
-        setFilesMulti(files.map(file => ({ file, name: '', price: '' })));
+        setFilesMulti(prev => [
+            ...prev,
+            ...files.map(file => ({ file, name: '', price: '' }))
+        ]);
     };
 
     // Handle name/price change for each file
@@ -300,15 +303,20 @@ export default function ProductUpload() {
 
     }, [])
 
+    const removeFile = (index) => {
+        setFilesMulti(prev => prev.filter((_, i) => i !== index));
+    };
 
     return (
         <div className="w-full max-w-md">
-            <div className="w-full rounded-lg shadow border bg-gray-800 border-gray-700">
-                <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
+            <div className="w-full rounded-lg shadow border bg-gray-800 border-gray-700 max-h-[85vh] flex flex-col">
+                <div className="p-6 flex-shrink-0">
                     <h1 className="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
                         Upload Multiple Products
                     </h1>
-
+                </div>
+    
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
                     <form id="multiple-upload-form" className="space-y-4 md:space-y-6" onSubmit={MultipleProducts}>
                         <div>
                             <label htmlFor="multiple-product" className="block mb-2 text-sm font-medium text-white">
@@ -322,13 +330,11 @@ export default function ProductUpload() {
                             >
                                 <option value="">Select a product</option>
                                 {categorylist.map((cat, idx) => (
-
-
                                     <option key={idx} value={cat.name} >{cat.name}</option>
                                 ))}
                             </select>
                         </div>
-
+    
                         {/* Upload Method Selection */}
                         <div>
                             <label className="block mb-2 text-sm font-medium text-white">
@@ -339,7 +345,6 @@ export default function ProductUpload() {
                                     type="button"
                                     onClick={() => {
                                         setUploadMethod("file");
-                                        clearAllCapturedImages();
                                         stopCameraPreview();
                                     }}
                                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${uploadMethod === "file"
@@ -353,7 +358,6 @@ export default function ProductUpload() {
                                     type="button"
                                     onClick={() => {
                                         setUploadMethod("camera");
-                                        setFilesMulti([]);
                                         stopCameraPreview();
                                     }}
                                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${uploadMethod === "camera"
@@ -365,7 +369,7 @@ export default function ProductUpload() {
                                 </button>
                             </div>
                         </div>
-
+    
                         {/* File Upload */}
                         {uploadMethod === "file" && (
                             <div>
@@ -383,9 +387,9 @@ export default function ProductUpload() {
                                     accept="image/*"
                                 />
                                 {FilesMulti.length > 0 && (
-                                    <div className="mt-4 space-y-4">
+                                    <div className="mt-4 space-y-4 max-h-60 overflow-y-auto">
                                         {FilesMulti.map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-4 bg-gray-700 p-2 rounded-lg">
+                                            <div key={idx} className="flex items-center gap-4 bg-gray-700 p-2 rounded-lg relative">
                                                 <img src={URL.createObjectURL(item.file)} alt={`preview-${idx}`} className="w-16 h-16 object-cover rounded" />
                                                 <div className="flex-1 grid grid-cols-2 gap-2">
                                                     <input
@@ -405,20 +409,28 @@ export default function ProductUpload() {
                                                         required
                                                     />
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFile(idx)}
+                                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                                    title="Remove"
+                                                >
+                                                    ×
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
                         )}
-
+    
                         {/* Camera Section */}
                         {uploadMethod === "camera" && (
                             <div>
                                 <label className="block mb-2 text-sm font-medium text-white">
                                     Camera Capture
                                 </label>
-
+    
                                 {!showPreview && (
                                     <button
                                         type="button"
@@ -427,14 +439,9 @@ export default function ProductUpload() {
                                     >
                                         <span className="text-4xl mb-2">📷</span>
                                         <span>Click to open camera</span>
-                                        {capturedImages.length > 0 && (
-                                            <span className="text-sm mt-1">
-                                                {capturedImages.length} photo(s) captured
-                                            </span>
-                                        )}
                                     </button>
                                 )}
-
+    
                                 {/* Camera Preview */}
                                 {showPreview && (
                                     <div className="space-y-4">
@@ -447,7 +454,7 @@ export default function ProductUpload() {
                                                 className="w-full h-64 object-cover"
                                                 style={{ transform: 'scaleX(-1)' }} // Mirror effect
                                             />
-
+    
                                             {/* Camera overlay/frame */}
                                             <div className="absolute inset-0 border-2 border-white/20 rounded-lg pointer-events-none">
                                                 <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 border-white/50"></div>
@@ -455,15 +462,8 @@ export default function ProductUpload() {
                                                 <div className="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 border-white/50"></div>
                                                 <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 border-white/50"></div>
                                             </div>
-
-                                            {/* Photo counter */}
-                                            {capturedImages.length > 0 && (
-                                                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-                                                    {capturedImages.length} captured
-                                                </div>
-                                            )}
                                         </div>
-
+    
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
@@ -483,49 +483,48 @@ export default function ProductUpload() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Captured Images Grid */}
-                                {capturedImages.length > 0 && !showPreview && (
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h3 className="text-white font-medium">
-                                                Captured Photos ({capturedImages.length})
-                                            </h3>
-                                            <button
-                                                type="button"
-                                                onClick={clearAllCapturedImages}
-                                                className="text-red-400 hover:text-red-300 text-sm"
-                                            >
-                                                Clear All
-                                            </button>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {capturedImages.map((image) => (
-                                                <div key={image.id} className="relative group">
-                                                    <img
-                                                        src={image.url}
-                                                        alt="Captured"
-                                                        className="w-full h-24 object-cover rounded-lg"
+    
+                                {FilesMulti.length > 0 && (
+                                    <div className="mt-4 space-y-4 max-h-60 overflow-y-auto">
+                                        {FilesMulti.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-4 bg-gray-700 p-2 rounded-lg relative">
+                                                <img src={URL.createObjectURL(item.file)} alt={`preview-${idx}`} className="w-16 h-16 object-cover rounded" />
+                                                <div className="flex-1 grid grid-cols-2 gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Name"
+                                                        value={item.name}
+                                                        onChange={e => handleFileMetaChange(idx, 'name', e.target.value)}
+                                                        className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-600"
+                                                        required
                                                     />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeCapturedImage(image.id)}
-                                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-80 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        ×
-                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Price"
+                                                        value={item.price}
+                                                        onChange={e => handleFileMetaChange(idx, 'price', e.target.value)}
+                                                        className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-600"
+                                                        required
+                                                    />
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFile(idx)}
+                                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                                    title="Remove"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
-
+    
                                 {/* Hidden canvas for photo capture */}
                                 <canvas ref={canvasRef} style={{ display: "none" }} />
                             </div>
                         )}
-
+    
                         {/* File count display */}
                         {FilesMulti.length > 0 && (
                             <div className="bg-gray-700 rounded-lg p-3">
@@ -534,15 +533,19 @@ export default function ProductUpload() {
                                 </p>
                             </div>
                         )}
-
-                        <button
-                            type="submit"
-                            disabled={isUploading || FilesMulti.length === 0}
-                            className="w-full text-white bg-sharon-or hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
-                        >
-                            {isUploading ? 'Uploading...' : `Upload ${FilesMulti.length} Products`}
-                        </button>
                     </form>
+                </div>
+    
+                {/* Fixed submit button at bottom */}
+                <div className="p-6 pt-0 flex-shrink-0 border-t border-gray-700">
+                    <button
+                        type="submit"
+                        form="multiple-upload-form"
+                        disabled={isUploading || FilesMulti.length === 0}
+                        className="w-full text-white bg-sharon-or hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
+                    >
+                        {isUploading ? 'Uploading...' : `Upload ${FilesMulti.length} Products`}
+                    </button>
                 </div>
             </div>
         </div>
