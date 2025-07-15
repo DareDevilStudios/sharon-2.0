@@ -17,54 +17,11 @@ import { TurnedInNot } from '@mui/icons-material';
 import { useConnection } from '../components/context/ConnectionContext';
 import ProductUpload from '../components/ProductUpload';
 import CategoryUpload from '../components/CategoryUpload';
+import { getAllPendingCategories, getAllPendingProducts, getCategoriesFromDB, getPendingProducts, getProductsFromDB, pendingProducts, saveCategoriesToDB, saveProductsToDB, syncPendingCategories, syncPendingProducts } from '../utils/indexedDb';
 
 // Utility functions
-const PRODUCTS_KEY = 'sharon_products';
-const SUBIMAGES_KEY = 'sharon_subimages';
 
-const saveToLocalStorage = (key, value) => {
-    console.log('Saving to localStorage:', key, value);
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-        console.warn('Failed to save to localStorage', key, e);
-    }
-};
-const loadFromLocalStorage = (key, fallback = null) => {
-    try {
-        const val = localStorage.getItem(key);
-        return val ? JSON.parse(val) : fallback;
-    } catch (e) {
-        return fallback;
-    }
-};
 
-async function createImageBlob(imageUrl) {
-    try {
-
-        console.log("here");
-        
-        const response = await fetch(imageUrl);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const imageBlob = await response.blob();
-        
-        // Verify it's actually an image
-        if (!imageBlob.type.startsWith('image/')) {
-            throw new Error('Not a valid image type');
-        }
-        
-        console.log(`Image blob created: ${imageBlob.size} bytes, type: ${imageBlob.type}`);
-        return imageBlob;
-        
-    } catch (error) {
-        console.error('Failed to create image blob:', error);
-        return null;
-    }
-}
 
 
 
@@ -85,7 +42,7 @@ export default function Home() {
     const [visibleRange, setVisibleRange] = useState({ start: 0, end: 12 });
     const ITEMS_PER_PAGE = 12;
     const SCROLL_THRESHOLD = 100;
-    const {isOnline}=useConnection()
+    const { isOnline } = useConnection()
 
     // Optimize scroll handling with useCallback
     const handleScroll = useCallback(() => {
@@ -102,7 +59,7 @@ export default function Home() {
             }));
         }
 
-        if (scrollTop < SCROLL_THRESHOLD && prev.start > 0) {
+        if (scrollTop < SCROLL_THRESHOLD > 0) {
             setVisibleRange(prev => ({
                 start: Math.max(0, prev.start - ITEMS_PER_PAGE),
                 end: prev.end
@@ -119,82 +76,172 @@ export default function Home() {
         }
     }, [handleScroll]);
 
-    // Fetch products and their subproducts from Firebase
-    const fetchProductsAndSubimages = async () => {
-        if (navigator.onLine) {
+    async function imageUrlToBase64(url) {
         try {
-            setLoading(true);
-                // Fetch products
-            const productsRef = collection(db, "products");
-            const querySnapshot = await getDocs(productsRef);
-            const productsData = [];
-            
-            querySnapshot.forEach((doc) => {
-                productsData.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-            
-            const products = await Promise.all(
-                productsData.map(async (data) => {
-                    let imageBlob = await createImageBlob(data.productUrl);
-                    return {
-                        ...data,
-                        offlineImage: imageBlob
-                    };
-                })
-            );
-            
-            console.log("blob", products); // Now this will have all products with images
-            
-            setProducts(productsData);
-                if (productsData.length > 0) {
-                    saveToLocalStorage(PRODUCTS_KEY, productsData);
-                }
+            // Fetch the image
+            const response = await fetch(url);
 
-                // Fetch subimages for each product
-                const subimagesData = {};
+            // Check if the request was successful
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status}`);
+            }
+
+            // Get the image as a blob
+            const blob = await response.blob();
+
+            // Convert blob to base64
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Error converting image to base64:', error);
+            throw error;
+        }
+    }
+
+    // const offlineViewOfPendingCategories=async()=>{
+    //     try {
+    //         const pendingCat = await getAllPendingCategories();
             
-            for (const product of productsData) {
-                try {
-                    const subProductRef = collection(db, product.name);
-                    const subQuerySnapshot = await getDocs(subProductRef);
-                        const subImagesArray = [];
-                    
-                    subQuerySnapshot.forEach((doc) => {
-                            subImagesArray.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
+    //         for (const pendCat of pendingCat) {
+    //           console.log("Category:", pendCat.name);
+              
+    //           // Check if productUrl exists and is a File object
+    //           if (pendCat.productUrl && pendCat.productUrl instanceof File) {
+    //             const offlineImage = URL.createObjectURL(pendCat.productUrl);
+    //             console.log("PEND CAT Image URL:", offlineImage);
+                
+    //             // Now you can use this URL in your UI
+    //             // Example: document.getElementById('category-image').src = offlineImage;
+                
+    //             // Store the URL for later use
+    //             pendCat.imageUrl = offlineImage;
+    //           } else {
+    //             console.log("No valid file found for category:", pendCat.name);
+    //           }
+    //         }
+            
+    //         return pendingCat; // Return with imageUrl added
+    //       } catch (error) {
+    //         console.error("Error in offline view:", error);
+    //         return [];
+    //       }
+    // }
+
+    const fetchProductsAndSubimages = async () => {
+        if (isOnline) {
+            try {
+                setLoading(true);
+                // Fetch products
+                const productsRef = collection(db, "products");
+                const querySnapshot = await getDocs(productsRef);
+                const productsData = [];
+
+                querySnapshot.forEach((doc) => {
+                    productsData.push({
+                        id: doc.id,
+                        ...doc.data()
                     });
-                    
+                });
+
+                const category = await Promise.all(
+                    productsData.map(async (data) => {
+                        const offlineImage = await imageUrlToBase64(data.productUrl);
+                        return {
+                            ...data,
+                            offlineImage // Add the base64 image to the product
+                        };
+                    })
+                );
+
+                console.log("newProducts", category);
+                
+                
+                // const pendingCategories = await getAllPendingCategories();
+                
+                // Save Firebase categories
+                await saveCategoriesToDB(category);
+                
+                // Re-add pending categories to preserve them
+                // if (pendingCategories.length > 0) {
+                //     const allCategories = [...category, ...pendingCategories];
+                //     await saveCategoriesToDB(allCategories);
+                // }
+
+                setProducts(productsData);
+
+                const subimagesData = {};
+
+                for (const product of productsData) {
+                    try {
+                        const subProductRef = collection(db, product.name);
+                        const subQuerySnapshot = await getDocs(subProductRef);
+
+                        const subImagesArray = await Promise.all(
+                            subQuerySnapshot.docs.map(async (doc) => {
+                                const offlineImage = await imageUrlToBase64(doc.data().productUrl);
+                                return {
+                                    id: doc.id,
+                                    ...doc.data(),
+                                    offlineImage
+                                }
+                            })
+                        )
+
                         subimagesData[product.id] = subImagesArray;
-                } catch (error) {
+                    } catch (error) {
                         subimagesData[product.id] = [];
                     }
                 }
+
+                console.log("SUBPRODUCTS", subimagesData);
+
+                await saveProductsToDB(subimagesData);
+
                 setSubProducts(subimagesData);
-                if (Object.keys(subimagesData).length > 0) {
-                    saveToLocalStorage(SUBIMAGES_KEY, subimagesData);
-            }
-        } catch (error) {
-                // If fetch fails, fallback to localStorage
-                setProducts(loadFromLocalStorage(PRODUCTS_KEY, []));
-                setSubProducts(loadFromLocalStorage(SUBIMAGES_KEY, {}));
-        } finally {
-            setLoading(false);
+
+            } catch (error) {
+                const category = await getCategoriesFromDB()
+                const products = await getProductsFromDB()
+                setProducts(category);
+                setSubProducts(products);
+              
+
+            } finally {
+                setLoading(false);
             }
         } else {
-            // Offline: load from localStorage
-            setProducts(loadFromLocalStorage(PRODUCTS_KEY, []));
-            setSubProducts(loadFromLocalStorage(SUBIMAGES_KEY, {}));
+            // Offline mode - load from IndexedDB and localStorage
+            try {
+              const pendCategories= await getAllPendingCategories()
+                const category = await getCategoriesFromDB()
+        
+                const products = await getProductsFromDB()
+                const mergedCategories = [...category, ...pendCategories];
+                setProducts(mergedCategories);
+                setSubProducts(products);
+                
+            } catch (error) {
+                console.error("Error loading offline data:", error);
+                const category = await getCategoriesFromDB()
+                const products = await getProductsFromDB()
+
+                setProducts(category);
+                setSubProducts(products);
+              
+            } finally {
+                setLoading(false); // This was missing - crucial fix!
+            }
         }
     };
 
     // On mount and on network status change
     useEffect(() => {
-        fetchProductsAndSubimages();
+         fetchProductsAndSubimages();
+      
         const handleOnline = () => fetchProductsAndSubimages();
         const handleOffline = () => fetchProductsAndSubimages();
         window.addEventListener('online', handleOnline);
@@ -203,28 +250,28 @@ export default function Home() {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
+    }, [isOnline]);
 
 
 
     async function deleteEntireCollection(collectionName) {
         const collectionRef = collection(db, collectionName);
         const snapshot = await getDocs(collectionRef);
-        
+
         // Delete all documents in the collection
-        const deletePromises = snapshot.docs.map(document => 
-          deleteDoc(doc(db, collectionName, document.id))
+        const deletePromises = snapshot.docs.map(document =>
+            deleteDoc(doc(db, collectionName, document.id))
         );
-        
+
         await Promise.all(deletePromises);
         console.log(`Collection '${collectionName}' deleted successfully`);
-      }
+    }
 
     // Delete product
-    const handleDelete = async (productId,productName) => {
+    const handleDelete = async (productId, productName) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
             try {
-                if(!isOnline){
+                if (!isOnline) {
                     alert(`Deltion of the ${productName} is in queue after internet comes it will reflect in database `)
                 }
                 await deleteDoc(doc(db, "products", productId));
@@ -276,12 +323,12 @@ export default function Home() {
         try {
             // Create temporary URLs for preview
             const previewUrls = files.map(file => URL.createObjectURL(file));
-            
+
             // Update form with preview URLs
-        setEditForm(prev => ({
-            ...prev,
+            setEditForm(prev => ({
+                ...prev,
                 newImages: [...prev.newImages, ...previewUrls],
-            // If no current image, set the first uploaded image as main
+                // If no current image, set the first uploaded image as main
                 productUrl: prev.productUrl || previewUrls[0] || ''
             }));
 
@@ -323,8 +370,8 @@ export default function Home() {
                 ...prev,
                 newImages,
                 // If removing the main image, set next available image as main
-                productUrl: prev.productUrl === prev.newImages[index] 
-                    ? (newImages[0] || '') 
+                productUrl: prev.productUrl === prev.newImages[index]
+                    ? (newImages[0] || '')
                     : prev.productUrl
             };
         });
@@ -358,13 +405,13 @@ export default function Home() {
             }
 
             await updateDoc(doc(db, "products", editingProduct.id), updatedData);
-            
+
             alert("Product updated successfully!");
             closeEditModal();
-            
+
             // Refresh products from database to ensure UI shows updated data
             await fetchProductsAndSubimages();
-            
+
         } catch (error) {
             console.error("Error updating product:", error);
             alert("Failed to update product.");
@@ -390,7 +437,7 @@ export default function Home() {
     const [subimagePrice, setSubimagePrice] = useState('');
     const [pendingSubimageFile, setPendingSubimageFile] = useState(null);
     const [pendingSubimages, setPendingSubimages] = useState([]);
-
+    const [filteredProducts, setFilteredProducts] = useState([])
     // Function to preload images
     const preloadImages = useCallback((urls) => {
         urls.forEach(url => {
@@ -412,25 +459,26 @@ export default function Home() {
             const subProductRef = collection(db, productName);
             const subQuerySnapshot = await getDocs(subProductRef);
             const subImagesArray = [];
-            
+
             subQuerySnapshot.forEach((doc) => {
                 subImagesArray.push({
                     id: doc.id,
                     ...doc.data()
                 });
             });
+            console.log("subImages", subImagesArray);
 
             // Calculate pagination
             const startIndex = (page - 1) * SUBIMAGES_PER_PAGE;
             const endIndex = startIndex + SUBIMAGES_PER_PAGE;
             const paginatedImages = subImagesArray.slice(startIndex, endIndex);
-            
+
             // Preload next batch of images
             const nextBatchStart = endIndex;
             const nextBatchEnd = nextBatchStart + SUBIMAGES_PER_PAGE;
             const nextBatchImages = subImagesArray.slice(nextBatchStart, nextBatchEnd);
             preloadImages(nextBatchImages.map(img => img.productUrl));
-            
+
             setSubimages(prev => page === 1 ? paginatedImages : [...prev, ...paginatedImages]);
             setHasMoreSubimages(endIndex < subImagesArray.length);
         } catch (error) {
@@ -450,13 +498,83 @@ export default function Home() {
         }
     };
 
+
+    const filterProducts = async (product) => {
+        console.log("Filtering", subproducts);
+        console.log(typeof (subproducts));
+
+        // Add safety checks
+        if (!subproducts || typeof subproducts !== 'object') {
+            console.error("subproducts is not a valid object:", subproducts);
+            return [];
+        }
+
+        const allProducts = [];
+
+        try {
+            // Loop through each property in subproducts object
+            for (const [key, value] of Object.entries(subproducts)) {
+                // Check if the value is an array of objects
+                if (Array.isArray(value)) {
+                    // Loop through each object in the array
+                    for (const obj of value) {
+                        if (obj && typeof obj === 'object') {
+                            allProducts.push(obj);
+                        }
+                    }
+                } else if (value && typeof value === 'object') {
+                    // If it's a single object, push it directly
+                    allProducts.push(value);
+                }
+                // Skip non-object values (strings, numbers, null, undefined)
+            }
+        } catch (error) {
+            console.error("Error processing subproducts:", error);
+            return [];
+        }
+
+        // Filter products by name
+        const filteredProduct = allProducts.filter(productObj => {
+            // console.log("TEST",productObj.name);
+            // console.log("test2",product?.name);
+            
+            
+            return productObj && productObj.name === product?.name;
+        });
+
+
+
+        return filteredProduct;
+    }
     // Function to open subimages modal
     const openSubimagesModal = async (product) => {
-        setSelectedProduct(product);
-        setSubimagesModalOpen(true);
-        setSubimagesPage(1);
-        setHasMoreSubimages(true);
-        await fetchSubimages(product.name, 1);
+        if (isOnline) {
+            setSelectedProduct(product);
+            setSubimagesModalOpen(true);
+            setSubimagesPage(1);
+            setHasMoreSubimages(true);
+            await fetchSubimages(product.name, 1);
+
+        } else {
+
+            setSubimagesModalOpen(true);
+            setSubimagesPage(1);
+            setHasMoreSubimages(true);
+           
+            const pendingProducts=await getPendingProducts(product.name)
+            console.log("PENDING",pendingProducts);
+            console.log("here",typeof(pendingProducts));
+            
+            
+            const filterProd = await filterProducts(product)
+            console.log("FILTERED PRODUCTS",filterProd);
+            console.log(typeof(filterProd));
+            
+            const allporducts=[...filterProd,...pendingProducts]
+            setFilteredProducts(allporducts)
+           
+        }
+
     };
 
     // Function to close subimages modal
@@ -599,13 +717,13 @@ export default function Home() {
         if (!window.confirm("Are you sure you want to delete this image?")) return;
 
         try {
-            if(!isOnline){
+            if (!isOnline) {
                 alert(`Deletion of ${selectedProduct.name} is in queue after internet comes deletion will reflect`)
             }
             setUploadingSubimage(true);
             // Delete from Firestore
             await deleteDoc(doc(db, selectedProduct.name, subimageId));
-            
+
             // Refresh subimages
             await fetchSubimages(selectedProduct.name, subimagesPage);
         } catch (error) {
@@ -615,7 +733,16 @@ export default function Home() {
             setUploadingSubimage(false);
         }
     };
-
+    const syncFirebase=async()=>{
+        const cat=await getAllPendingCategories()
+        if(cat.length>0){
+            await syncPendingCategories()
+        }
+        const pro=await getAllPendingProducts()
+        if(pro.length>0){
+            await syncPendingProducts()
+        }
+    }
     // Cleanup when modal closes
     useEffect(() => {
         if (!subimagesModalOpen) {
@@ -625,29 +752,40 @@ export default function Home() {
     }, [subimagesModalOpen]);
 
     const renderActiveComponent = () => {
-        switch(activeComponent) {
+        switch (activeComponent) {
             case 'single':
-                return <CategoryUpload/>;
+                return <CategoryUpload />;
             case 'multiple':
-                return <ProductUpload/>;
+                return <ProductUpload />;
             default:
                 return (
-                    <div className="w-full h-full overflow-y-auto products-container" style={{ 
+                    <div className="w-full h-full overflow-y-auto products-container" style={{
                         scrollBehavior: 'smooth',
                         WebkitOverflowScrolling: 'touch',
                         overscrollBehavior: 'contain'
                     }}>
+                    
                         <div className="p-8">
+                       
                             <div className="text-center mb-8">
                                 <h2 className="text-3xl font-bold text-white mb-4">Product Gallery</h2>
                                 <p className="text-gray-400">Manage your uploaded products</p>
-                                <button 
-                                    onClick={fetchProductsAndSubimages}
-                                    className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                                >
-                                    Refresh Products
-                                </button>
-                          
+                                <div className="flex justify-center gap-8 mt-4">
+                                    <button
+                                        onClick={fetchProductsAndSubimages}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    >
+                                        Refresh Products
+                                    </button>
+                                    {isOnline ? (
+                                        <button
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                            onClick={syncFirebase}
+                                        >
+                                            Sync
+                                        </button>
+                                    ) : <span></span>}
+                                </div>
                             </div>
 
                             {loading ? (
@@ -673,11 +811,11 @@ export default function Home() {
                                         }}>
                                             {/* Main Product Image */}
                                             <div className="relative" style={{ height: '300px' }}>
-                                                {product.productUrl ? (
-                                                <img 
-                                                    src={product.productUrl} 
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover"
+                                                {isOnline ? (
+                                                    <img
+                                                        src={product.productUrl}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
                                                         loading="lazy"
                                                         decoding="async"
                                                         style={{
@@ -685,23 +823,37 @@ export default function Home() {
                                                             transform: 'translateZ(0)',
                                                             backfaceVisibility: 'hidden'
                                                         }}
-                                                    onError={(e) => {
+                                                        onError={(e) => {
                                                             console.error('Image failed to load:', product.productUrl);
                                                             e.target.src = '/placeholder-image.png';
-                                                    }}
-                                                />
+                                                        }}
+                                                    />
                                                 ) : (
-                                                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                                        <span className="text-gray-400">No Image</span>
-                                                    </div>
-                                                )}
+                                                    <img
+                                                        src={product.offlineImage}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        style={{
+                                                            willChange: 'transform',
+                                                            transform: 'translateZ(0)',
+                                                            backfaceVisibility: 'hidden'
+                                                        }}
+                                                        onError={(e) => {
+                                                            console.error('Image failed to load:', product.offlineImage);
+                                                            e.target.src = '/placeholder-image.png';
+                                                        }}
+                                                    />
+                                                )
+                                                }
                                             </div>
-                                            
+
                                             <div className="p-4">
                                                 <h3 className="text-white font-semibold text-lg mb-1 truncate">
                                                     {product.name}
                                                 </h3>
-                                                
+
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => handleEdit(product)}
@@ -710,7 +862,7 @@ export default function Home() {
                                                         Edit
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(product.id,product.name)}
+                                                        onClick={() => handleDelete(product.id, product.name)}
                                                         className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                                                     >
                                                         Delete
@@ -835,58 +987,115 @@ export default function Home() {
                                             </div>
                                         )}
 
-                                        {loadingSubimages && subimages.length === 0 ? (
-                                            <div className="flex justify-center items-center h-64">
-                                                <div className="text-white text-xl">Loading images...</div>
-                                            </div>
-                                        ) : subimages.length === 0 ? (
-                                            <div className="text-center text-gray-400 py-8">
-                                                No additional images found
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                                    {subimages.map((subimage) => (
-                                                        <div key={subimage.id} className="aspect-square relative group bg-gray-800 rounded-lg p-2 flex flex-col justify-between">
-                                                            <OptimizedImage
-                                                                src={subimage.productUrl}
-                                                                alt={`${selectedProduct?.name} subimage`}
-                                                                className="w-full h-32 object-cover rounded-lg"
-                                                            />
-                                                            <div className="mt-2 text-center">
-                                                                <div className="text-white text-sm truncate">{subimage.name || <span className="text-gray-400">No Name</span>}</div>
-                                                                {subimage.price && (
-                                                                    <div className="text-green-400 text-xs mt-1">${subimage.price}</div>
-                                                                )}
-                                                            </div>
-                                                            <button
-                                                                onClick={() => handleDeleteSubimage(subimage.id)}
-                                                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="Delete image"
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                
-                                                {/* Loading trigger for infinite scroll */}
-                                                {hasMoreSubimages && (
-                                                    <div 
-                                                        id="load-more-trigger"
-                                                        className="h-10 flex items-center justify-center mt-4"
-                                                    >
-                                                        {loadingSubimages ? (
-                                                            <div className="text-white">Loading more images...</div>
-                                                        ) : (
-                                                            <div className="h-1 w-full bg-gray-700"></div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
 
-                                      {pendingSubimages.length > 0 ?  <button
+                                     {/* Check if online before rendering content */}
+{isOnline ? (
+    // Original content when online
+    <>
+        {loadingSubimages && subimages.length === 0 ? (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-white text-xl">Loading images...</div>
+            </div>
+        ) : subimages.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+                No additional images found
+            </div>
+        ) : (
+            <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {subimages.map((subimage) => (
+                        <div key={subimage.id} className="aspect-square relative group bg-gray-800 rounded-lg p-2 flex flex-col justify-between">
+                            <OptimizedImage
+                                src={subimage.productUrl}
+                                alt={`${selectedProduct?.name} subimage`}
+                                className="w-full h-32 object-cover rounded-lg"
+                            />
+                            <div className="mt-2 text-center">
+                                <div className="text-white text-sm truncate">{subimage.productName || <span className="text-gray-400">No Name</span>}</div>
+                                {subimage.price && (
+                                    <div className="text-green-400 text-xs mt-1">{subimage.price}</div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => handleDeleteSubimage(subimage.id)}
+                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete image"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Loading trigger for infinite scroll */}
+                {hasMoreSubimages && (
+                    <div
+                        id="load-more-trigger"
+                        className="h-10 flex items-center justify-center mt-4"
+                    >
+                        {loadingSubimages ? (
+                            <div className="text-white">Loading more images...</div>
+                        ) : (
+                            <div className="h-1 w-full bg-gray-700"></div>
+                        )}
+                    </div>
+                )}
+            </>
+        )}
+    </>
+) : (
+    <>
+        {filteredProducts.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+                No additional images found
+            </div>
+        ) : (
+            <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {filteredProducts.map((subimage) => (
+                        <div key={subimage.id} className="aspect-square relative group bg-gray-800 rounded-lg p-2 flex flex-col justify-between">
+                            <OptimizedImage
+                                src={subimage.offlineImage}
+                                alt={`${selectedProduct?.name} subimage`}
+                                className="w-full h-32 object-cover rounded-lg"
+                            />
+                            <div className="mt-2 text-center">
+                                <div className="text-white text-sm truncate">{subimage.name || <span className="text-gray-400">No Name</span>}</div>
+                                {subimage.price && (
+                                    <div className="text-green-400 text-xs mt-1">${subimage.price}</div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => handleDeleteSubimage(subimage.id)}
+                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete image"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Loading trigger for infinite scroll */}
+                {hasMoreSubimages && (
+                    <div
+                        id="load-more-trigger"
+                        className="h-10 flex items-center justify-center mt-4"
+                    >
+                        {loadingSubimages ? (
+                            <div className="text-white">Loading more images...</div>
+                        ) : (
+                            <div className="h-1 w-full bg-gray-700"></div>
+                        )}
+                    </div>
+                )}
+            </>
+        )}
+    </>
+)}
+
+
+                                        {pendingSubimages.length > 0 ? <button
                                             onClick={async () => {
                                                 setUploadingSubimage(true);
                                                 for (const img of pendingSubimages) {
@@ -897,7 +1106,8 @@ export default function Home() {
                                                     const url = await getDownloadURL(snapshot.ref);
                                                     await addDoc(collection(db, selectedProduct.name), {
                                                         productUrl: url,
-                                                        name: img.name,
+                                                        name: selectedProduct.name,
+                                                        productName:img.name,
                                                         price: img.price,
                                                         createdAt: new Date().toISOString()
                                                     });
@@ -910,7 +1120,7 @@ export default function Home() {
                                             className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors p-5"
                                         >
                                             {uploadingSubimage ? 'Uploading...' : 'Confirm & Upload All'}
-                                        </button>:""}
+                                        </button> : ""}
                                     </div>
                                 </div>
                             </div>
@@ -984,8 +1194,8 @@ export default function Home() {
             </Head>
             <main className="bg-black min-h-screen">
                 <Navbar />
-  <div className="bg-black flex h-screen pt-16"> 
-                    
+                <div className="bg-black flex h-screen pt-16">
+
                     {/* Left Sidebar */}
                     <aside className="w-64 h-full bg-gray-900 border-r border-gray-700">
                         <div className="p-6">
@@ -993,34 +1203,31 @@ export default function Home() {
                             <nav className="space-y-4">
                                 <button
                                     onClick={() => setActiveComponent(null)}
-                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
-                                        activeComponent === null
-                                            ? 'bg-sharon-or text-white'
-                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                                    }`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${activeComponent === null
+                                        ? 'bg-sharon-or text-white'
+                                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                        }`}
                                 >
-                                    View Products
+                                    View Categories
                                 </button>
                                 <button
                                     onClick={() => setActiveComponent('single')}
-                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
-                                        activeComponent === 'single'
-                                            ? 'bg-sharon-or text-white'
-                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                                    }`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${activeComponent === 'single'
+                                        ? 'bg-sharon-or text-white'
+                                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                        }`}
                                 >
                                     Category Upload
                                 </button>
                                 <button
                                     onClick={() => setActiveComponent('multiple')}
-                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
-                                        activeComponent === 'multiple'
-                                            ? 'bg-sharon-or text-white'
-                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                                    }`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${activeComponent === 'multiple'
+                                        ? 'bg-sharon-or text-white'
+                                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                        }`}
                                 >
-                                     Products Upload
-                                  
+                                    Products Upload
+
                                 </button>
                             </nav>
                         </div>
@@ -1056,8 +1263,8 @@ export default function Home() {
                                         <div>
                                             <label className="block text-white font-medium mb-2">Current Image</label>
                                             <div className="aspect-square w-32 mb-4 relative">
-                                                <img 
-                                                    src={editForm.productUrl} 
+                                                <img
+                                                    src={editForm.productUrl}
                                                     alt={editForm.name}
                                                     className="w-full h-full object-cover rounded-lg"
                                                     onError={(e) => {
@@ -1096,7 +1303,7 @@ export default function Home() {
                                             onChange={handleImageUpload}
                                             className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-sharon-or file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sharon-or file:text-white hover:file:bg-orange-600"
                                         />
-                                        
+
                                         {/* Preview new images */}
                                         {editForm.newImages.length > 0 && (
                                             <div className="mt-4">
@@ -1104,8 +1311,8 @@ export default function Home() {
                                                 <div className="grid grid-cols-4 gap-2">
                                                     {editForm.newImages.map((imageUrl, index) => (
                                                         <div key={index} className="relative aspect-square">
-                                                            <img 
-                                                                src={imageUrl} 
+                                                            <img
+                                                                src={imageUrl}
                                                                 alt={`New image ${index + 1}`}
                                                                 className="w-full h-full object-cover rounded-md cursor-pointer hover:opacity-80"
                                                                 onClick={() => handleFormChange('productUrl', imageUrl)}

@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
+import { pendingCategories } from "../utils/indexedDb";
 export default function CategoryUpload() {
   const productsRef = collection(db, "products");
   const [Name, setName] = useState("");
@@ -149,41 +150,56 @@ export default function CategoryUpload() {
   }, [stream]);
 
   const createProduct = async (e) => {
-    
-    e.preventDefault();
-
     if (file == null || Name == null || Name.trim() === "") {
       alert("Please provide both name and file");
       return;
     }
 
-    try {
-      if(!isOnline){
-        alert(`Category "${Name}" has been queued and will be added to database after internet comes back`);
-      }
+    if(isOnline){
+      e.preventDefault();
 
-      const imageRef = ref(storage, `products/${Name}`);
-      await uploadBytes(imageRef, file).then((snapshot) => {
-        getDownloadURL(snapshot.ref).then(async (url) => {
-          await addDoc(productsRef, {
-            name: Name,
-            productUrl: url,
-          }).then(() => console.log(url));
+     
+      try {
+        // if(!isOnline){
+        //   alert(`Category "${Name}" has been queued and will be added to database after internet comes back`);
+        // }
+          console.log("file",file);
+          
+        const imageRef = ref(storage, `products/${Name}`);
+        await uploadBytes(imageRef, file).then((snapshot) => {
+          getDownloadURL(snapshot.ref).then(async (url) => {
+            await addDoc(productsRef, {
+              name: Name,
+              productUrl: url,
+            }).then(() => console.log(url));
+          });
         });
-      });
-      alert(`Category  ${Name} has been uploaded successfully`);
-
-      // Reset form
-      setName("");
-      setFile(null);
-      setCapturedImage(null);
-      setUploadMethod("file");
-      stopCameraPreview();
-      document.getElementById("single-upload-form").reset();
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Upload failed. Please try again.");
+        alert(`Category  ${Name} has been uploaded successfully`);
+  
+        // Reset form
+        setName("");
+        setFile(null);
+        setCapturedImage(null);
+        setUploadMethod("file");
+        stopCameraPreview();
+        document.getElementById("single-upload-form").reset();
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("Upload failed. Please try again.");
+      }
+    }else{
+      e.preventDefault();
+       const category={
+        name:Name,
+        productUrl:file 
+       }
+       
+       console.log("FILE",file)
+       console.log((typeof(file)));
+       
+       await pendingCategories(category)
     }
+  
   };
 
 

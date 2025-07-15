@@ -13,8 +13,10 @@ import {
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
 import { LoginSharp } from "@mui/icons-material";
+import { log2 } from "three/examples/jsm/nodes/Nodes.js";
+import { getAllPendingCategories, getCategoriesFromDB, pendingProducts } from "../utils/indexedDb";
 export default function ProductUpload() {
-    const [Product, setProduct] = useState("");
+    const [Category,setCategory] = useState("");
     const [FilesMulti, setFilesMulti] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadMethod, setUploadMethod] = useState("file"); // "file" or "camera"
@@ -197,12 +199,13 @@ export default function ProductUpload() {
 
     const MultipleProducts = async (e) => {
         e.preventDefault();
-        if (FilesMulti.length === 0 || Product == null || Product.trim() === "") {
-            alert("Please provide both product name and files");
+        if (FilesMulti.length === 0 || Category == null || Category.trim() === "") {
+            alert("Please provide both categoryName name and files");
             return;
         }
         // Check all files have name and price
-        for (let i = 0; i < FilesMulti.length; i++) {
+        if(isOnline){ 
+            for (let i = 0; i < FilesMulti.length; i++) {
             if (!FilesMulti[i].name || !FilesMulti[i].price) {
                 alert(`Please provide name and price for image ${i + 1}`);
                 return;
@@ -210,27 +213,27 @@ export default function ProductUpload() {
         }
         setIsUploading(true);
         try {
-            const productName = Product;
-            if (!isOnline) {
-                alert(`products for ${productName} added in queue after internet comes it will added to Database`)
-                setIsUploading(false)
-            }
+            const categoryName =Category;
+            // if (!isOnline) {
+            //     alert(`products for ${categoryName} added in queue after internet comes it will added to Database`)
+            //     setIsUploading(false)
+            // }
             // Use as entered
             for (let i = 0; i < FilesMulti.length; i++) {
                 const { file, name, price } = FilesMulti[i];
-                const imageRef2 = ref(storage, `${productName}/${name || (productName + '-' + (i + 1))}`);
-                const eachProducts = collection(db, productName);
+                const imageRef2 = ref(storage, `${categoryName}/${name || (categoryName + '-' + (i + 1))}`);
+                const eachProducts = collection(db, categoryName);
                 // Upload file
                 const snapshot = await uploadBytes(imageRef2, file);
                 // Get download URL
                 const url = await getDownloadURL(snapshot.ref);
                 // Add to Firestore
-                await addDoc(eachProducts, { name, price, productUrl: url });
+                await addDoc(eachProducts, { name:categoryName,productName: name, price, productUrl: url });
                 console.log(`file ${i + 1} uploaded: ${url}`);
             }
-            alert(`${FilesMulti.length} products added to product: ${Product}`);
+            alert(`${FilesMulti.length} products added to Category: ${Category}`);
             // Reset form
-            setProduct("");
+            setCategory("");
             setFilesMulti([]);
             setCapturedImages([]);
             setUploadMethod("file");
@@ -241,7 +244,23 @@ export default function ProductUpload() {
             alert("Upload failed. Please try again.");
         } finally {
             setIsUploading(false);
+        }}
+        else{
+            const categoryName =Category;
+            const products=[]
+            for(let i=0;i<FilesMulti.length;i++){
+               const product={
+                name:FilesMulti[i].name,
+                price:FilesMulti[i].price,
+                productUrl:FilesMulti[i].file
+               }
+
+               products.push(product)
+                
+            }
+            await pendingProducts(products,categoryName)
         }
+       
     };
 
     const saveToLocalStorage = (key, value) => {
@@ -273,7 +292,16 @@ export default function ProductUpload() {
                         name: doc.data().name
                     });
                 });
-                setCategorylist(categoryData);
+
+                const pendCate=await getAllPendingCategories()
+                 const pendCategorylist=[]
+                 pendCate.forEach((doc)=>{
+                    pendCategorylist.push({
+                        name:doc.name
+                    })
+                 })
+                 const mergedCategories=[...categoryData,...pendCategorylist]
+                setCategorylist(mergedCategories);
               
 
 
@@ -290,8 +318,24 @@ export default function ProductUpload() {
 
             }
         } else {
-            // Offline: load from localStorage
-            setCategorylist(loadFromLocalStorage(CATEGORYLIST, []));
+            const cate=await getCategoriesFromDB()
+            const categoryNames=[]
+            cate.forEach((cat)=>{
+                categoryNames.push({
+                    name:cat.name
+                })
+            })
+            
+            const pendCate=await getAllPendingCategories()
+            const pendCategorylist=[]
+            pendCate.forEach((doc)=>{
+               pendCategorylist.push({
+                   name:doc.name
+               })
+            })
+            const mergedCategories=[...categoryNames,...pendCategorylist]
+           setCategorylist(mergedCategories);
+         
 
         }
     };
@@ -320,15 +364,15 @@ export default function ProductUpload() {
                     <form id="multiple-upload-form" className="space-y-4 md:space-y-6" onSubmit={MultipleProducts}>
                         <div>
                             <label htmlFor="multiple-product" className="block mb-2 text-sm font-medium text-white">
-                                Product Name
+                                Category Name
                             </label>
                             <select
-                                value={Product}
-                                onChange={e => setProduct(e.target.value)}
+                                value={Category}
+                                onChange={e => setCategory(e.target.value)}
                                 className="border sm:text-sm rounded-lg block w-full p-2.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
                                 required
                             >
-                                <option value="">Select a product</option>
+                                <option value="">Select a Category</option>
                                 {categorylist.map((cat, idx) => (
                                     <option key={idx} value={cat.name} >{cat.name}</option>
                                 ))}
