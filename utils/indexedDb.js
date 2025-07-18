@@ -115,6 +115,18 @@ export async function removePendingCategory(categoryId) {
   }
 }
 
+export async function removePendingProducts(cateName){
+  try {
+    const db = await getDB();
+    const tx = db.transaction(PENDING_PRODUCTS_STORE, 'readwrite');
+    await tx.store.delete(cateName);
+    await tx.done;
+
+  } catch (error) {
+    console.error("Error removing pending category:", error);
+  }
+}
+
 
 
 export async function syncPendingCategories() {
@@ -312,7 +324,7 @@ export async function syncPendingProducts(){
           await addDoc(eachProducts, { name:products.categoryName,productName: product.name, price:product.price, productUrl: url });
           alert(`successfully added products${product.name} of category ${products.categoryName}`)
         }
-        
+        await removePendingProducts(products.categoryName)
       } catch (error) {
         console.error(`Failed to sync category ${products.categoryName}:`, error);
       }

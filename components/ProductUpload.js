@@ -259,6 +259,13 @@ export default function ProductUpload() {
                 
             }
             await pendingProducts(products,categoryName)
+
+            setCategory("");
+            setFilesMulti([]);
+            setCapturedImages([]);
+            setUploadMethod("file");
+            stopCameraPreview();
+            document.getElementById("multiple-upload-form").reset();
         }
        
     };

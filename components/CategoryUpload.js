@@ -198,6 +198,12 @@ export default function CategoryUpload() {
        console.log((typeof(file)));
        
        await pendingCategories(category)
+       setName("");
+       setFile(null);
+       setCapturedImage(null);
+       setUploadMethod("file");
+       stopCameraPreview();
+       document.getElementById("single-upload-form").reset();
     }
   
   };
