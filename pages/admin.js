@@ -17,7 +17,7 @@ import { TurnedInNot } from '@mui/icons-material';
 import { useConnection } from '../components/context/ConnectionContext';
 import ProductUpload from '../components/ProductUpload';
 import CategoryUpload from '../components/CategoryUpload';
-import { getAllPendingCategories, getAllPendingProducts, getCategoriesFromDB, getPendingProducts, getProductsFromDB, pendingProducts, saveCategoriesToDB, saveProductsToDB, syncPendingCategories, syncPendingProducts } from '../utils/indexedDb';
+import { clearMultipleStores, getAllPendingCategories, getAllPendingProducts, getCategoriesFromDB, getPendingProducts, getProductsFromDB, pendingProducts, saveCategoriesToDB, saveProductsToDB, syncPendingCategories, syncPendingProducts } from '../utils/indexedDb';
 
 // Utility functions
 
@@ -37,6 +37,7 @@ export default function Home() {
         productUrl: '',
         newImages: []
     });
+    const [sync,setSync]=useState(Boolean)
 
     // Add scroll optimization state
     const [visibleRange, setVisibleRange] = useState({ start: 0, end: 12 });
@@ -74,6 +75,7 @@ export default function Home() {
             scrollContainer.addEventListener('scroll', handleScroll);
             return () => scrollContainer.removeEventListener('scroll', handleScroll);
         }
+      
     }, [handleScroll]);
 
     async function imageUrlToBase64(url) {
@@ -134,6 +136,7 @@ export default function Home() {
     const fetchProductsAndSubimages = async () => {
         if (isOnline) {
             try {
+                await clearMultipleStores()
                 setLoading(true);
                 // Fetch products
                 const productsRef = collection(db, "products");
@@ -241,6 +244,21 @@ export default function Home() {
     // On mount and on network status change
     useEffect(() => {
          fetchProductsAndSubimages();
+
+           const checkOfllineData=async()=>{
+                const offlineCatData=await getAllPendingCategories()
+                  console.log("second",offlineCatData.length);
+                
+                const offlineProdData= await getAllPendingProducts()
+                console.log("sec",offlineProdData);
+                if (offlineCatData.length > 0 || offlineProdData.length > 0) {
+                    setSync(true)
+                   
+                }else{
+                    setSync(false)
+                }
+        }
+        checkOfllineData()
       
         const handleOnline = () => fetchProductsAndSubimages();
         const handleOffline = () => fetchProductsAndSubimages();
@@ -278,6 +296,7 @@ export default function Home() {
                 await deleteEntireCollection(productName)
                 setProducts(products.filter(product => product.id !== productId));
                 alert(`Product ${productName} deleted successfully!`);
+                await fetchProductsAndSubimages()
             } catch (error) {
                 console.error("Error deleting product:", error);
                 alert("Failed to delete product.");
@@ -556,7 +575,7 @@ export default function Home() {
             await fetchSubimages(product.name, 1);
 
         } else {
-
+            setSelectedProduct(product);
             setSubimagesModalOpen(true);
             setSubimagesPage(1);
             setHasMoreSubimages(true);
@@ -572,7 +591,8 @@ export default function Home() {
             
             const allporducts=[...filterProd,...pendingProducts]
             setFilteredProducts(allporducts)
-           
+            console.log("CHECK  ",filteredProducts)
+            setHasMoreSubimages(false);
         }
 
     };
@@ -742,6 +762,8 @@ export default function Home() {
         if(pro.length>0){
             await syncPendingProducts()
         }
+
+        setSync(false)
     }
     // Cleanup when modal closes
     useEffect(() => {
@@ -777,14 +799,14 @@ export default function Home() {
                                     >
                                         Refresh Products
                                     </button>
-                                    {isOnline ? (
+                                    {isOnline && sync && (
                                         <button
                                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                                             onClick={syncFirebase}
                                         >
                                             Sync
                                         </button>
-                                    ) : <span></span>}
+                                    ) }
                                 </div>
                             </div>
 
@@ -890,7 +912,7 @@ export default function Home() {
                                     <div className="p-6">
                                         <div className="flex justify-between items-center mb-6">
                                             <h2 className="text-2xl font-bold text-white">
-                                                Additional Images - {selectedProduct?.name}
+                                                Additional Images - {selectedProduct.name}
                                             </h2>
                                             <button
                                                 onClick={closeSubimagesModal}
@@ -1021,7 +1043,7 @@ export default function Home() {
                                 className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                 title="Delete image"
                             >
-                                ×
+                             ×
                             </button>
                         </div>
                     ))}
@@ -1052,8 +1074,10 @@ export default function Home() {
         ) : (
             <>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    
                     {filteredProducts.map((subimage) => (
                         <div key={subimage.id} className="aspect-square relative group bg-gray-800 rounded-lg p-2 flex flex-col justify-between">
+                            
                             <OptimizedImage
                                 src={subimage.offlineImage}
                                 alt={`${selectedProduct?.name} subimage`}
@@ -1062,7 +1086,7 @@ export default function Home() {
                             <div className="mt-2 text-center">
                                 <div className="text-white text-sm truncate">{subimage.name || <span className="text-gray-400">No Name</span>}</div>
                                 {subimage.price && (
-                                    <div className="text-green-400 text-xs mt-1">${subimage.price}</div>
+                                    <div className="text-green-400 text-xs mt-1">{subimage.price}</div>
                                 )}
                             </div>
                             <button

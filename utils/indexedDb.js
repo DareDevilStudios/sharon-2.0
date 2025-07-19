@@ -31,6 +31,25 @@ export async function getDB() {
   });
 }
 
+export async function clearMultipleStores() {
+  const stores = ['categories', 'products'];
+  try {
+    const db = await getDB();
+    const tx = db.transaction(stores, 'readwrite'); // Use 'stores' here
+    
+    // Clear each store
+    for (const storeName of stores) {
+      await tx.objectStore(storeName).clear();
+    }
+    
+    await tx.done;
+    console.log(`Stores cleared: ${stores.join(', ')}`); // Use 'stores' here
+  } catch (error) {
+    console.error('Error clearing multiple stores:', error);
+  }
+}
+
+
 export async function saveCategoriesToDB(products) {
 
   const db = await getDB();
