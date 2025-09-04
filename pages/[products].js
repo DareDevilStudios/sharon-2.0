@@ -30,8 +30,9 @@ const Products = ({ imageUrls, urlMove }) => {
 
         {/* PRODUCTS SECTION */}
         <div className="w-screen bg-black p-2 md:p-8">
+        
           <h1 className="text-4xl font-bold text-center mt-28 md:mt-20 mb-10 text-white">
-            {urlMove.toUpperCase()}
+            {urlMove.toUpperCase()} 
           </h1>
           <DisplayCards imageUrls={imageUrls} />
         </div>
@@ -40,48 +41,7 @@ const Products = ({ imageUrls, urlMove }) => {
   );
 }
 
-export async function getStaticPaths() {
-  const products = [
-    "arch",
-    "ball-pillar",
-    "beam-support",
-    "beeding",
-    "charu-support",
-    "charupadi",
-    "concerete-pots",
-    "cornis",
-    "fencing",
-    "fish-pond",
-    "flowers",
-    "furnace",
-    "gatetop",
-    "mokappu",
-    "parapet-hole",
-    "parapet",
-    "parkbench",
-    "pillar-top",
-    "pillar",
-    "products",
-    "shade-support",
-    "showpillar",
-    "sopanam",
-    "washing-table",
-    "waste-management",
-    "water-cutting",
-    "well-cover-and-support"
-  ];
-
-  const paths = products.map((product) => ({
-    params: { products: product },
-  }));
-
-  return {
-    paths,
-    fallback: false, // or 'blocking' if needed
-  };
-}
-
-export async function getStaticProps({ params }) {
+export async function getServerSideProps({ params }) {
   const urlMove = params.products;
   const productsRef = collection(db, urlMove);
 

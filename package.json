@@ -18,6 +18,7 @@
     "@reduxjs/toolkit": "^1.9.1",
     "@vercel/analytics": "^0.1.6",
     "firebase": "^9.15.0",
+    "idb": "^8.0.3",
     "jquery": "^3.6.3",
     "next": "13.1.1",
     "next-cookies": "^2.0.3",

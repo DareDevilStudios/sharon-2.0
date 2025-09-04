@@ -13,8 +13,9 @@ import {
 import dynamic from "next/dynamic";
 
 
-const Home = ({imageUrls}) => {
-
+const Home = ({imageUrls = []}) => {
+  // Ensure imageUrls is always an array
+  const safeImageUrls = Array.isArray(imageUrls) ? imageUrls : [];
 
   return (
     <>
@@ -24,9 +25,9 @@ const Home = ({imageUrls}) => {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta property="og:title" content="Sharon Industries - Precasted Concrete Products for Fencing, Pillars, and More"></meta>
         <meta property="og:description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements."></meta>
-        <meta property="og:image" content={imageUrls[0].productUrl}></meta>
-        <meta name="twitter:image" content={imageUrls[0].productUrl}></meta>
-        <meta name='image' content={imageUrls[0].productUrl}/>
+        <meta property="og:image" content={safeImageUrls[0]?.productUrl || '/home.png'}></meta>
+        <meta name="twitter:image" content={safeImageUrls[0]?.productUrl || '/home.png'}></meta>
+        <meta name='image' content={safeImageUrls[0]?.productUrl || '/home.png'}/>
         <meta name="twitter:title" content="Sharon Industries - Precasted Concrete Products for Fencing, Pillars, and More"></meta>
         <meta name="twitter:description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements."></meta>
         {/* keywords */}
@@ -92,7 +93,7 @@ const Home = ({imageUrls}) => {
             Our Products
           </h1>
 
-          <Card_keeper imageUrls={imageUrls} />
+          {safeImageUrls.length > 0 && <Card_keeper imageUrls={safeImageUrls} />}
 
         </div>
 
@@ -108,22 +109,31 @@ const Home = ({imageUrls}) => {
 }
 
 export async function getStaticProps() {
-  const productsRef = collection(db, 'products');
-  const urlsSnapshot = await getDocs(productsRef);
+  try {
+    const productsRef = collection(db, 'products');
+    const urlsSnapshot = await getDocs(productsRef);
 
-  const imageUrlsInit = urlsSnapshot.docs.map((doc) => doc.data());
+    const imageUrlsInit = urlsSnapshot.docs.map((doc) => doc.data());
 
-  const imageUrls = imageUrlsInit.map((url) => {
-    const modifiedName = url.name.replace(/\s+/g, "-");
-    return { ...url, name: modifiedName };
-  });
-  
-  console.log(imageUrls)
-  return {
-    props: {
-      imageUrls,
-    },
-  };
+    const imageUrls = imageUrlsInit.map((url) => {
+      const modifiedName = url.name ? url.name.replace(/\s+/g, "-") : "";
+      return { ...url, name: modifiedName };
+    });
+    
+    console.log(imageUrls)
+    return {
+      props: {
+        imageUrls,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return {
+      props: {
+        imageUrls: [],
+      },
+    };
+  }
 }
 
-export default dynamic (() => Promise.resolve(Home), {ssr: false})
+export default Home;

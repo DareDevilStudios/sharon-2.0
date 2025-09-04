@@ -1,8 +1,11 @@
 import Image from 'next/image'
 import React from 'react'
 import Link from 'next/link'
+import { useConnection } from './context/ConnectionContext'
 
 const Navbar = () => {
+
+    const {isOnline}=useConnection()
 
     return (
 
@@ -31,6 +34,8 @@ const Navbar = () => {
                     <li>
                         <Link href="/#contactus" class="text-lg block py-2 pl-3 pr-4  rounded md:hover:bg-transparent md:border-0 md:hover:text-sharon-or md:p-0 text-gray-400 md:dark:hover:bg-transparent">Contact</Link>
                     </li>
+
+                    <li>{isOnline ? '🟢 Online' : '🔴 Offline'}</li>
                 </ul>
         </div>
 
