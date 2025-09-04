@@ -5,6 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
 import { pendingCategories } from "../utils/indexedDb";
+import { smartInvalidateCache, CACHE_PATHS } from "../utils/cacheUtils";
 export default function CategoryUpload() {
   const productsRef = collection(db, "products");
   const [Name, setName] = useState("");
@@ -14,8 +15,7 @@ export default function CategoryUpload() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [stream, setStream] = useState(null);
-  
-  const {isOnline}=useConnection()
+  const { isOnline } = useConnection();
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -174,6 +174,10 @@ export default function CategoryUpload() {
             }).then(() => console.log(url));
           });
         });
+        
+        // Invalidate cache after successful category upload
+        await smartInvalidateCache(CACHE_PATHS.ALL, isOnline);
+        
         alert(`Category  ${Name} has been uploaded successfully`);
   
         // Reset form

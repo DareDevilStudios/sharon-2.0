@@ -18,6 +18,7 @@ import { useConnection } from '../components/context/ConnectionContext';
 import ProductUpload from '../components/ProductUpload';
 import CategoryUpload from '../components/CategoryUpload';
 import { clearMultipleStores, getAllPendingCategories, getAllPendingProducts, getCategoriesFromDB, getPendingProducts, getProductsFromDB, pendingProducts, saveCategoriesToDB, saveProductsToDB, syncPendingCategories, syncPendingProducts } from '../utils/indexedDb';
+import { smartInvalidateCache, processQueuedInvalidations, CACHE_PATHS, getQueueStatus } from '../utils/cacheUtils';
 
 // Utility functions
 
@@ -241,17 +242,22 @@ export default function Home() {
         }
     };
 
-    // On mount and on network status change
+        // On mount and on network status change
     useEffect(() => {
          fetchProductsAndSubimages();
 
-           const checkOfllineData=async()=>{
+          const checkOfllineData=async()=>{
                 const offlineCatData=await getAllPendingCategories()
                   console.log("second",offlineCatData.length);
                 
                 const offlineProdData= await getAllPendingProducts()
                 console.log("sec",offlineProdData);
-                if (offlineCatData.length > 0 || offlineProdData.length > 0) {
+                
+                // Check for queued cache invalidations
+                const queueStatus = getQueueStatus();
+                console.log("Queued cache invalidations:", queueStatus.count);
+                
+                if (offlineCatData.length > 0 || offlineProdData.length > 0 || queueStatus.count > 0) {
                     setSync(true)
                    
                 }else{
@@ -260,8 +266,22 @@ export default function Home() {
         }
         checkOfllineData()
       
-        const handleOnline = () => fetchProductsAndSubimages();
-        const handleOffline = () => fetchProductsAndSubimages();
+        const handleOnline = async () => {
+            console.log('Coming back online - processing queued cache invalidations...');
+            try {
+                // Process queued cache invalidations when coming back online
+                await processQueuedInvalidations();
+            } catch (error) {
+                console.error('Error processing queued invalidations on reconnect:', error);
+            }
+            fetchProductsAndSubimages();
+        };
+        
+        const handleOffline = () => {
+            console.log('Going offline - cache invalidations will be queued');
+            fetchProductsAndSubimages();
+        };
+        
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         return () => {
@@ -290,13 +310,18 @@ export default function Home() {
         if (window.confirm("Are you sure you want to delete this product?")) {
             try {
                 if (!isOnline) {
-                    alert(`Deltion of the ${productName} is in queue after internet comes it will reflect in database `)
+                    alert(`Deletion of the ${productName} is in queue after internet comes it will reflect in database`);
                 }
+                
                 await deleteDoc(doc(db, "products", productId));
-                await deleteEntireCollection(productName)
+                await deleteEntireCollection(productName);
                 setProducts(products.filter(product => product.id !== productId));
+                
+                // Invalidate cache after successful deletion
+                await smartInvalidateCache(CACHE_PATHS.ALL, isOnline);
+                
                 alert(`Product ${productName} deleted successfully!`);
-                await fetchProductsAndSubimages()
+                await fetchProductsAndSubimages();
             } catch (error) {
                 console.error("Error deleting product:", error);
                 alert("Failed to delete product.");
@@ -424,6 +449,9 @@ export default function Home() {
             }
 
             await updateDoc(doc(db, "products", editingProduct.id), updatedData);
+
+            // Invalidate cache after successful update
+            await smartInvalidateCache(CACHE_PATHS.ALL, isOnline);
 
             alert("Product updated successfully!");
             closeEditModal();
@@ -744,6 +772,9 @@ export default function Home() {
             // Delete from Firestore
             await deleteDoc(doc(db, selectedProduct.name, subimageId));
 
+            // Invalidate cache after successful subimage deletion
+            await smartInvalidateCache([CACHE_PATHS.HOME], isOnline);
+
             // Refresh subimages
             await fetchSubimages(selectedProduct.name, subimagesPage);
         } catch (error) {
@@ -754,16 +785,35 @@ export default function Home() {
         }
     };
     const syncFirebase=async()=>{
-        const cat=await getAllPendingCategories()
-        if(cat.length>0){
-            await syncPendingCategories()
-        }
-        const pro=await getAllPendingProducts()
-        if(pro.length>0){
-            await syncPendingProducts()
-        }
+        try {
+            console.log('Starting Firebase sync...');
+            
+            const cat=await getAllPendingCategories()
+            if(cat.length>0){
+                await syncPendingCategories()
+                console.log(`Synced ${cat.length} pending categories`);
+            }
+            
+            const pro=await getAllPendingProducts()
+            if(pro.length>0){
+                await syncPendingProducts()
+                console.log(`Synced ${pro.length} pending products`);
+            }
 
-        setSync(false)
+            // Process queued cache invalidations after sync
+            const invalidationResult = await processQueuedInvalidations();
+            console.log('Cache invalidation result:', invalidationResult);
+
+            // Invalidate all cache since we synced data
+            await smartInvalidateCache(CACHE_PATHS.ALL, isOnline);
+
+            setSync(false)
+            
+            alert(`Sync completed! Categories: ${cat.length}, Products: ${pro.length}, Cache invalidations: ${invalidationResult.processed}`);
+        } catch (error) {
+            console.error('Sync error:', error);
+            alert('Sync failed. Some items may not have been synchronized.');
+        }
     }
     // Cleanup when modal closes
     useEffect(() => {
@@ -1136,6 +1186,10 @@ export default function Home() {
                                                         createdAt: new Date().toISOString()
                                                     });
                                                 }
+                                                
+                                                // Invalidate cache after successful subimage upload
+                                                await smartInvalidateCache([CACHE_PATHS.HOME], isOnline);
+                                                
                                                 setPendingSubimages([]);
                                                 await fetchSubimages(selectedProduct.name, subimagesPage);
                                                 setUploadingSubimage(false);

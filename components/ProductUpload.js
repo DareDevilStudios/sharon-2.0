@@ -12,9 +12,8 @@ import {
 } from "firebase/firestore";
 import { storage } from "../firebase";
 import { useConnection } from "./context/ConnectionContext";
-import { LoginSharp } from "@mui/icons-material";
-import { log2 } from "three/examples/jsm/nodes/Nodes.js";
 import { getAllPendingCategories, getCategoriesFromDB, pendingProducts } from "../utils/indexedDb";
+import { smartInvalidateCache, CACHE_PATHS } from "../utils/cacheUtils";
 export default function ProductUpload() {
     const [Category,setCategory] = useState("");
     const [FilesMulti, setFilesMulti] = useState([]);
@@ -231,6 +230,9 @@ export default function ProductUpload() {
                 await addDoc(eachProducts, { name:categoryName,productName: name, price, productUrl: url });
                 console.log(`file ${i + 1} uploaded: ${url}`);
             }
+            // Invalidate cache after successful product upload
+            await smartInvalidateCache(CACHE_PATHS.ALL, isOnline);
+            
             alert(`${FilesMulti.length} products added to Category: ${Category}`);
             // Reset form
             setCategory("");
