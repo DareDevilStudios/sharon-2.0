@@ -19,7 +19,7 @@ export const Card_keeper = (props) => {
                     </a>
                     <div class="px-5 py-3 w-full flex flex-col items-center">
                         <a>
-                            <h5 class="mb-3 text-2xl font-bold text-center tracking-tight text-white">{imageUrl.name}</h5>
+                            <h5 class="mb-3 text-2xl font-bold text-center tracking-tight text-white">{imageUrl.name.replace(/_/g, ' ')}</h5>
                         </a>
                         <a class="inline-flex w-max items-center px-3 py-2 text-sm font-medium text-center text-white bg-sharon-or rounded-lg hover:bg-sharon-or focus:ring-4 focus:outline-none">
                             View more

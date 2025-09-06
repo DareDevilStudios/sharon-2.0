@@ -18,9 +18,9 @@ const Products = ({ imageUrls, urlMove }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta property="og:title" content={urlMove}/>
         <meta property="og:description" content={urlMove}/>
-        <meta property="og:image" content={imageUrls[0].productUrl}/>
-        <meta name="twitter:image" content={imageUrls[0].productUrl}/>
-        <meta name='image' content={imageUrls[0].productUrl} />
+        <meta property="og:image" content={imageUrls[0]?.productUrl || '/home.png'}/>
+        <meta name="twitter:image" content={imageUrls[0]?.productUrl || '/home.png'}/>
+        <meta name='image' content={imageUrls[0]?.productUrl || '/home.png'} />
         <meta name="twitter:title" content={urlMove}/>
         <meta name="twitter:description" content={urlMove}/>
         <link rel="icon" href="/favicon.ico" />
@@ -40,63 +40,41 @@ const Products = ({ imageUrls, urlMove }) => {
   );
 }
 
-export async function getStaticPaths() {
-  const products = [
-    "arch",
-    "ball-pillar",
-    "beam-support",
-    "beeding",
-    "charu-support",
-    "charupadi",
-    "concerete-pots",
-    "cornis",
-    "fencing",
-    "fish-pond",
-    "flowers",
-    "furnace",
-    "gatetop",
-    "mokappu",
-    "parapet-hole",
-    "parapet",
-    "parkbench",
-    "pillar-top",
-    "pillar",
-    "products",
-    "shade-support",
-    "showpillar",
-    "sopanam",
-    "washing-table",
-    "waste-management",
-    "water-cutting",
-    "well-cover-and-support"
-  ];
+export async function getServerSideProps({ params, res }) {
+  try {
+    const urlMove = params.products;
+    
+    // Convert URL-friendly name back to original format for Firebase query
+    // Replace hyphens with spaces to match the original product name
+    const originalProductName = urlMove.replace(/-/g, " ");
+    
+    const productsRef = collection(db, originalProductName);
 
-  const paths = products.map((product) => ({
-    params: { products: product },
-  }));
+    const imageUrls = [];
+    const querySnapshot = await getDocs(productsRef);
+    querySnapshot.forEach((doc) => {
+      imageUrls.push(doc.data());
+    });
 
-  return {
-    paths,
-    fallback: false, // or 'blocking' if needed
-  };
-}
+    // Set cache tags for revalidation - use category name as tag
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Tags', originalProductName);
 
-export async function getStaticProps({ params }) {
-  const urlMove = params.products;
-  const productsRef = collection(db, urlMove);
-
-  const imageUrls = [];
-  const querySnapshot = await getDocs(productsRef);
-  querySnapshot.forEach((doc) => {
-    imageUrls.push(doc.data());
-  });
-
-  return {
-    props: {
-      imageUrls,
-      urlMove,
-    },
-  };
+    return {
+      props: {
+        imageUrls,
+        urlMove: originalProductName, // Use original name for display
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching product data:', error);
+    return {
+      props: {
+        imageUrls: [],
+        urlMove: params.products,
+      },
+    };
+  }
 }
 
 export default dynamic(() => Promise.resolve(Products), { ssr: false })

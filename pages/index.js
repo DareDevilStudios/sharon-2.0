@@ -107,7 +107,7 @@ const Home = ({imageUrls}) => {
   )
 }
 
-export async function getStaticProps() {
+export async function getServerSideProps({ res }) {
   const productsRef = collection(db, 'products');
   const urlsSnapshot = await getDocs(productsRef);
 
@@ -117,6 +117,10 @@ export async function getStaticProps() {
     const modifiedName = url.name.replace(/\s+/g, "-");
     return { ...url, name: modifiedName };
   });
+  
+  // Set cache tags for revalidation
+  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+  res.setHeader('Cache-Tags', 'products');
   
   console.log(imageUrls)
   return {
