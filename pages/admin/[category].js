@@ -308,14 +308,11 @@ const CategoryProducts = () => {
 
         <div className="px-6 py-20 max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex md:flex-row flex-col gap-3 justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="md:text-3xl text-xl font-bold text-white">
                 {category?.replace(/_/g, " ").toUpperCase()} Products
               </h1>
-              <p className="text-gray-400 mt-2">
-                Manage products in this category
-              </p>
             </div>
             <div className="flex gap-3">
               <button

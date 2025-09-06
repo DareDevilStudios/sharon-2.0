@@ -78,9 +78,9 @@ function DisplayCards(props) {
 
                         {/* Product Info and WhatsApp Button */}
                         <div className="p-4 w-full">
-                            <h3 className="text-white text-lg font-semibold mb-3 text-center">
+                            {/* <h3 className="text-white text-lg font-semibold mb-3 text-center">
                                 {imageUrl.name || 'Product'}
-                            </h3>
+                            </h3> */}
                             <button
                                 onClick={() => sendWhatsAppMessage(imageUrl)}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2"

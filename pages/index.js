@@ -42,7 +42,7 @@ const Home = ({imageUrls}) => {
 
           {/* left */}
 
-          <div className="flex flex-col w-100 md:w-1/2 justify-center items-center mt-20">
+          <div className="flex flex-col w-100 md:w-1/2 justify-center items-center">
             <h1 className=" mt-14 md:mt-0  md:text-8xl text-6xl leading-tight text-sharon-or font-black text-center">DESIGN <br />
               YOUR <br /> DREAM <br />
               HOME

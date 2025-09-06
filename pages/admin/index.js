@@ -304,8 +304,8 @@ export default function Home() {
                 
                 {/* Header */}
                 <div className="px-6 py-8 max-w-7xl mx-auto">
-                    <div className="flex justify-between items-center mb-8">
-                        <h1 className="text-3xl font-bold text-white">Categories Management</h1>
+                    <div className="flex justify-between items-center my-8">
+                        <h1 className="md:text-3xl text-xl font-bold text-white">Categories Management</h1>
                         <div className="flex gap-3">
                             <button 
                                 onClick={() => setShowAddForm(!showAddForm)}
