@@ -51,9 +51,9 @@ const Home = ({imageUrls}) => {
               Strong foundations, solid designs: <br />
               Trust us to bring your concrete visions to life.
             </span>
-            <Link href="#about" class=" hover:bg-black  mt-6 px-8 py-2 border-2 text-white font-bold bg-sharon-or border-sharon-or w-max rounded-lg flex">
+            <Link href="#products" class=" hover:bg-black  mt-6 px-8 py-2 border-2 text-white font-bold bg-sharon-or border-sharon-or w-max rounded-lg flex">
               <svg class="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-              Know More
+              Know Our Products
             </Link>
           </div>
 
@@ -88,7 +88,7 @@ const Home = ({imageUrls}) => {
 
         <div className="w-screen bg-black p-2 md:p-8 ">
 
-          <h1 className="text-4xl font-bold my-8 text-center text-white">
+          <h1 id='products' className="text-4xl font-bold my-8 text-center text-white">
             Our Products
           </h1>
 
