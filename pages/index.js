@@ -14,8 +14,6 @@ import dynamic from "next/dynamic";
 
 
 const Home = ({imageUrls}) => {
-
-
   return (
     <>
       <Head>
@@ -24,9 +22,13 @@ const Home = ({imageUrls}) => {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta property="og:title" content="Sharon Industries - Precasted Concrete Products for Fencing, Pillars, and More"></meta>
         <meta property="og:description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements."></meta>
-        <meta property="og:image" content={imageUrls[0].productUrl}></meta>
-        <meta name="twitter:image" content={imageUrls[0].productUrl}></meta>
-        <meta name='image' content={imageUrls[0].productUrl}/>
+        {imageUrls.length > 0 && (
+             <>
+                <meta property="og:image" content={imageUrls[0].productUrl}></meta>
+                <meta name="twitter:image" content={imageUrls[0].productUrl}></meta>
+                <meta name='image' content={imageUrls[0].productUrl}/>
+             </>
+        )}
         <meta name="twitter:title" content="Sharon Industries - Precasted Concrete Products for Fencing, Pillars, and More"></meta>
         <meta name="twitter:description" content="Sharon Industries is a leading provider of high-quality precasted concrete products. We specialize in a wide range of designs including fencing, mokappu, beam support, pillars, show pillars, well designs, water cutting, parapets, ventilation, and garden designs. Browse our collection for innovative and durable concrete solutions for your construction projects. Contact us today to discuss your design requirements."></meta>
         {/* keywords */}
@@ -51,8 +53,8 @@ const Home = ({imageUrls}) => {
               Strong foundations, solid designs: <br />
               Trust us to bring your concrete visions to life.
             </span>
-            <Link href="#products" class=" hover:bg-black  mt-6 px-8 py-2 border-2 text-white font-bold bg-sharon-or border-sharon-or w-max rounded-lg flex">
-              <svg class="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            <Link href="#products" className=" hover:bg-black  mt-6 px-8 py-2 border-2 text-white font-bold bg-sharon-or border-sharon-or w-max rounded-lg flex">
+              <svg className="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
               Know Our Products
             </Link>
           </div>
@@ -111,10 +113,31 @@ export async function getServerSideProps({ res }) {
   const productsRef = collection(db, 'products');
   const urlsSnapshot = await getDocs(productsRef);
 
-  const imageUrlsInit = urlsSnapshot.docs.map((doc) => doc.data());
+  // 1. Get raw data
+  let imageUrlsInit = urlsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return { ...data, id: doc.id };
+  });
 
+  // 2. Sort based on Priority
+  // Logic: 
+  // - If priority > 0, it comes first (ascending order 1, 2, 3...)
+  // - If priority is 0 or missing, it goes to the bottom
+  imageUrlsInit.sort((a, b) => {
+      const pA = a.priority && a.priority > 0 ? a.priority : Number.MAX_SAFE_INTEGER;
+      const pB = b.priority && b.priority > 0 ? b.priority : Number.MAX_SAFE_INTEGER;
+
+      // If priorities are the same (e.g., both are 0), sort alphabetically by name
+      if (pA === pB) {
+          return (a.name || '').localeCompare(b.name || '');
+      }
+
+      return pA - pB;
+  });
+
+  // 3. Format the names for URLs
   const imageUrls = imageUrlsInit.map((url) => {
-    const modifiedName = url.name.replace(/\s+/g, "-");
+    const modifiedName = url.name ? url.name.replace(/\s+/g, "-") : "";
     return { ...url, name: modifiedName };
   });
   
@@ -122,7 +145,6 @@ export async function getServerSideProps({ res }) {
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
   res.setHeader('Cache-Tags', 'products');
   
-  console.log(imageUrls)
   return {
     props: {
       imageUrls,

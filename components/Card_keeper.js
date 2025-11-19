@@ -10,26 +10,41 @@ export const Card_keeper = (props) => {
 
     return (
         <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1 gap-5 justify-center w-full items-center">
-            {props.imageUrls.map((imageUrl) => (
+            {props.imageUrls.map((imageUrl, index) => (
 
-                <Link href={"/" + imageUrl.name} onClick={() => dispatch(urlChange(imageUrl.name))} class="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center">
-
-                    <a className="h-60 w-64 md:w-full relative" >
-                        <Image title={imageUrl.name} class="rounded-t-lg  hover:scale-105 ease-in duration-500 " src={imageUrl.productUrl} fill objectFit="contain" valt={imageUrl.name} alt={imageUrl.name} />
-                    </a>
-                    <div class="px-5 py-3 w-full flex flex-col items-center">
-                        <a>
-                            <h5 class="mb-3 text-2xl font-bold text-center tracking-tight text-white">{imageUrl.name.replace(/_/g, ' ')}</h5>
-                        </a>
-                        <a class="inline-flex w-max items-center px-3 py-2 text-sm font-medium text-center text-white bg-sharon-or rounded-lg hover:bg-sharon-or focus:ring-4 focus:outline-none">
+                <Link 
+                    key={imageUrl.id || index} 
+                    href={"/" + imageUrl.name} 
+                    onClick={() => dispatch(urlChange(imageUrl.name))} 
+                    className="max-w-sm border rounded-lg shadow-md bg-gray-800 border-gray-700 flex flex-col items-center cursor-pointer hover:bg-gray-700 transition-colors"
+                >
+                    {/* Note: In Next.js 13+, you don't need the <a> tag inside Link. 
+                        If you are on Next.js 12 or older, keep the <a> tag. 
+                        I have kept the div structure for compatibility. */}
+                    
+                    <div className="h-60 w-64 md:w-full relative">
+                        <Image 
+                            title={imageUrl.name} 
+                            className="rounded-t-lg hover:scale-105 ease-in duration-500" 
+                            src={imageUrl.productUrl} 
+                            fill 
+                            style={{objectFit:"contain"}}
+                            alt={imageUrl.name} 
+                        />
+                    </div>
+                    <div className="px-5 py-3 w-full flex flex-col items-center">
+                        <div>
+                            <h5 className="mb-3 text-2xl font-bold text-center tracking-tight text-white">
+                                {imageUrl.name.replace(/-/g, ' ').replace(/_/g, ' ')}
+                            </h5>
+                        </div>
+                        <div className="inline-flex w-max items-center px-3 py-2 text-sm font-medium text-center text-white bg-sharon-or rounded-lg hover:bg-orange-600 focus:ring-4 focus:outline-none">
                             View more
-                            {/* <svg aria-hidden="true" class="w-4 h-4 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg> */}
-                        </a>
+                        </div>
                     </div>
                 </Link>
 
-            )
-            )}
+            ))}
         </div>
     )
 }
