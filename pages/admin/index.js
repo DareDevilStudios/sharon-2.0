@@ -7,8 +7,6 @@ import {
     ref,
     uploadBytes,
     getDownloadURL,
-    listAll,
-    list,
 } from "firebase/storage";
 import {
     collection,
@@ -17,8 +15,6 @@ import {
     doc,
     updateDoc,
     deleteDoc,
-    query,
-    where,
 } from "firebase/firestore";
 import { storage } from "../../firebase";
 import { revalidatePages, getRevalidationTags } from "../../utils/revalidate";
@@ -41,6 +37,22 @@ export default function Home() {
     const [categoryProductFiles, setCategoryProductFiles] = useState([]);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
 
+    // Helper function to sort categories
+    // Priority 1 comes first. Priority 0 (or undefined) goes to the bottom.
+    const sortCategories = (list) => {
+        return list.sort((a, b) => {
+            const pA = a.priority && a.priority > 0 ? a.priority : Number.MAX_SAFE_INTEGER;
+            const pB = b.priority && b.priority > 0 ? b.priority : Number.MAX_SAFE_INTEGER;
+            
+            // If priorities are equal (or both zero), sort alphabetically by name
+            if (pA === pB) {
+                return (a.displayName || '').localeCompare(b.displayName || '');
+            }
+            
+            return pA - pB;
+        });
+    };
+
     // Fetch all categories from products collection
     const fetchCategories = async () => {
         setLoadingCategories(true);
@@ -53,10 +65,14 @@ export default function Home() {
                     id: d.id, 
                     ...data, 
                     displayName: name.replace(/_/g, ' '),
-                    originalName: name
+                    originalName: name,
+                    priority: data.priority || 0 // Default priority 0
                 };
             });
-            setCategories(list);
+
+            // Sort based on priority
+            const sortedList = sortCategories(list);
+            setCategories(sortedList);
         } catch (error) {
             console.error('Error fetching categories:', error);
             alert('Failed to fetch categories');
@@ -87,8 +103,6 @@ export default function Home() {
             for (const d of oldDocs.docs) {
                 const data = d.data() || {};
                 const newData = { ...data };
-                // Keep the original product name, don't change it to category name
-                // Only update if the product name was the same as old category name
                 if (newData.name === oldName) {
                     newData.name = newName;
                 }
@@ -117,7 +131,10 @@ export default function Home() {
         try {
             const currentName = category.originalName;
             const inputEl = document.getElementById(`cat-name-${category.id}`);
+            const priorityEl = document.getElementById(`cat-priority-${category.id}`);
+            
             const newName = inputEl ? inputEl.value.trim() : currentName;
+            const newPriority = priorityEl ? parseInt(priorityEl.value) : (category.priority || 0);
             const sanitizedNewName = String(newName).replace(/\s+/g, '_');
             const docRef = doc(db, 'products', category.id);
 
@@ -134,7 +151,8 @@ export default function Home() {
             // Update category document in products collection
             await updateDoc(docRef, { 
                 name: sanitizedNewName, 
-                productUrl: newImageUrl 
+                productUrl: newImageUrl,
+                priority: newPriority 
             });
 
             // If name changed, migrate the category's collection
@@ -142,20 +160,22 @@ export default function Home() {
                 await migrateCollection(currentName, sanitizedNewName);
             }
 
-            // Update local state immediately instead of refetching
-            setCategories(prevCategories => 
-                prevCategories.map(cat => 
+            // Update local state and resort immediately
+            setCategories(prevCategories => {
+                const updatedList = prevCategories.map(cat => 
                     cat.id === category.id 
                         ? {
                             ...cat,
                             name: sanitizedNewName,
                             productUrl: newImageUrl,
                             displayName: newName,
-                            originalName: sanitizedNewName
+                            originalName: sanitizedNewName,
+                            priority: newPriority
                         }
                         : cat
-                )
-            );
+                );
+                return sortCategories(updatedList);
+            });
 
             // Clear pending image
             setPendingImageByCategoryId(prev => ({ ...prev, [category.id]: undefined }));
@@ -195,7 +215,7 @@ export default function Home() {
                 await deleteDoc(doc(db, category.originalName, docSnapshot.id));
             }
 
-            // Update local state immediately instead of refetching
+            // Update local state immediately
             setCategories(prevCategories => 
                 prevCategories.filter(cat => cat.id !== category.id)
             );
@@ -230,23 +250,21 @@ export default function Home() {
             const snapshot = await uploadBytes(imageRef, newCategoryFile);
             const imageUrl = await getDownloadURL(snapshot.ref);
             
-            // Add main category to products collection
+            // Add main category to products collection with Default Priority 0
             const docRef = await addDoc(productsRef, {
                 name: sanitizedName,
-                productUrl: imageUrl
+                productUrl: imageUrl,
+                priority: 0 // Default priority
             });
 
-            // If there are product images, upload them to the category collection
+            // If there are product images, upload them
             if (categoryProductFiles.length > 0) {
                 const categoryCollectionRef = collection(db, sanitizedName);
-                
-                // Upload all product images
                 const uploadPromises = categoryProductFiles.map(async (file, index) => {
                     const productImageRef = ref(storage, `${sanitizedName}/${Date.now()}-${index}-${file.name}`);
                     const productSnapshot = await uploadBytes(productImageRef, file);
                     const productImageUrl = await getDownloadURL(productSnapshot.ref);
                     
-                    // Add to category collection as products
                     return addDoc(categoryCollectionRef, {
                         name: sanitizedName,
                         productUrl: productImageUrl,
@@ -263,10 +281,14 @@ export default function Home() {
                 name: sanitizedName,
                 productUrl: imageUrl,
                 displayName: newCategoryName.trim(),
-                originalName: sanitizedName
+                originalName: sanitizedName,
+                priority: 0
             };
 
-            setCategories(prevCategories => [...prevCategories, newCategory]);
+            setCategories(prevCategories => {
+                // Add new one and sort (though 0 priority will likely put it at end)
+                return sortCategories([...prevCategories, newCategory]);
+            });
 
             // Trigger revalidation
             try {
@@ -291,7 +313,6 @@ export default function Home() {
         }
     };
 
-
     return (
         <>
             <Head>
@@ -302,7 +323,6 @@ export default function Home() {
             <main className="bg-black min-h-screen">
                 <Navbar />
                 
-                {/* Header */}
                 <div className="px-6 py-8 max-w-7xl mx-auto">
                     <div className="flex justify-between items-center my-8">
                         <h1 className="md:text-3xl text-xl font-bold text-white">Categories Management</h1>
@@ -322,9 +342,10 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Add Category Form */}
+                    {/* Add Category Form - (Keeping existing form code unchanged) */}
                     {showAddForm && (
                         <div className="mb-8 p-6 bg-gray-800 rounded-lg border border-gray-700">
+                             {/* ... (Same form code as previous, no changes needed here) ... */}
                             <h2 className="text-xl font-semibold text-white mb-4">Add New Category with Products</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -388,7 +409,6 @@ export default function Home() {
                         </div>
                     )}
 
-
                     {/* Categories Grid */}
                     {loadingCategories ? (
                         <div className="flex justify-center items-center h-64">
@@ -403,6 +423,14 @@ export default function Home() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {categories.map(cat => (
                                 <div key={cat.id} className="rounded-lg shadow-lg border bg-gray-800 border-gray-700 p-6 space-y-4 hover:shadow-xl transition-shadow">
+                                    
+                                    {/* Priority Badge */}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">
+                                            {cat.priority && cat.priority > 0 ? `Priority: ${cat.priority}` : 'No Priority'}
+                                        </span>
+                                    </div>
+
                                     {/* Category Image */}
                                     <div className="relative">
                                         {cat.productUrl ? (
@@ -430,6 +458,25 @@ export default function Home() {
                                             className="border sm:text-sm rounded-lg w-full p-3 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500 focus:outline-none" 
                                             placeholder="Enter category name"
                                         />
+                                    </div>
+
+                                    {/* Priority Selection Dropdown */}
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-300">Display Priority</label>
+                                        <select
+                                            id={`cat-priority-${cat.id}`}
+                                            defaultValue={cat.priority || 0}
+                                            className="border sm:text-sm rounded-lg w-full p-3 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                                        >
+                                            <option value="0">No Priority (Last)</option>
+                                            {/* Generate Dropdown 1 to Total Length */}
+                                            {[...Array(categories.length)].map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>
+                                                    {i + 1}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-500">Lower number = Higher position</p>
                                     </div>
 
                                     {/* Image Upload */}
